@@ -1,0 +1,11 @@
+{
+  "name": "Angola 365º",
+  "short_name": "Angola 365º",
+  "description": "Descubra, planeie e reserve experiências turísticas em Angola.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F1222",
+  "theme_color": "#C8102E",
+  "lang": "pt-AO",
+  "icons": [{ "src": "/img/sigaf.webp", "sizes": "192x192", "type": "image/webp" }]
+}

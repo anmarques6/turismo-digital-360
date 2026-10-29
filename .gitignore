@@ -1,0 +1,9 @@
+database/*.db*
+public/uploads/*
+node_modules/
+.env
+.env.local
+.vercel
+# geradas na publicação (scripts/baixar-imagens.js)
+public/img/*.jpg
+public/creditos.html

@@ -1,0 +1,16 @@
+{
+  "name": "turismo-digital-360",
+  "version": "3.0.0",
+  "description": "Turismo Digital 360° — plataforma de turismo de Angola com guia IA Kianda. Uma solução SIGAF.",
+  "main": "server.js",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed": "node database/seed.js",
+    "test": "node --test tests/api.test.js tests/angola365.test.js"
+  }
+}

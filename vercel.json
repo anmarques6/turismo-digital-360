@@ -1,0 +1,73 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "node scripts/baixar-imagens.js",
+  "outputDirectory": "public",
+  "regions": [
+    "fra1"
+  ],
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "{database/schema.sql,src/**}",
+      "maxDuration": 300
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/:caminho*",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/lembretes",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/sincronizar",
+      "schedule": "30 5 * * *"
+    },
+    {
+      "path": "/api/cron/pesquisa",
+      "schedule": "0 6 * * *"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://nominatim.openstreetmap.org; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), geolocation=(self), microphone=(self), payment=()"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        }
+      ]
+    }
+  ]
+}

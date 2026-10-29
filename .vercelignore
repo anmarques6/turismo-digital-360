@@ -1,0 +1,6 @@
+tests
+*.md
+.env
+.env.local
+publicar.bat
+dados/
