@@ -12,16 +12,15 @@ const ESPELHOS = (process.env.OVERPASS_URL ? [process.env.OVERPASS_URL] : []).co
   'https://overpass-api.de/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
 ]);
-const CONSULTA = `[out:json][timeout:170];area["ISO3166-1"="AO"][admin_level=2]->.a;(
-nwr["natural"="beach"]["name"](area.a);
-nwr["natural"="waterfall"]["name"](area.a);
-nwr["boundary"="national_park"]["name"](area.a);
-nwr["tourism"~"^(museum|viewpoint|zoo|theme_park)$"]["name"](area.a);
-nwr["historic"~"^(fort|castle|monument|archaeological_site)$"]["name"](area.a);
-nwr["tourism"~"^(hotel|motel|guest_house|hostel|apartment|chalet)$"]["name"](area.a);
-nwr["leisure"="resort"]["name"](area.a);
-nwr["amenity"="restaurant"]["name"](area.a);
-);out center tags;`;
+// Consultas separadas por tipo de lugar: os servidores públicos recusam uma consulta única tão grande
+const AREA = '[out:json][timeout:120];area["ISO3166-1"="AO"][admin_level=2]->.a;';
+const CONSULTAS = {
+  praias: 'nwr["natural"="beach"]["name"](area.a);',
+  natureza_cultura: '(nwr["natural"="waterfall"]["name"](area.a);nwr["boundary"="national_park"]["name"](area.a);nwr["tourism"~"^(museum|viewpoint|zoo|theme_park)$"]["name"](area.a);nwr["historic"~"^(fort|castle|monument|archaeological_site)$"]["name"](area.a););',
+  alojamentos: '(nwr["tourism"~"^(hotel|motel|guest_house|hostel|apartment|chalet)$"]["name"](area.a);nwr["leisure"="resort"]["name"](area.a););',
+  restaurantes: 'nwr["amenity"="restaurant"]["name"](area.a);',
+};
+const CONSULTA = Object.values(CONSULTAS).map(q => AREA + q + 'out center tags;')[0];
 
 const norm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/['’`".,]/g, '').replace(/\s+/g, ' ').trim();
 const GENERICOS = new Set(['praia', 'restaurante', 'hotel', 'pensao', 'residencial', 'bar', 'snack bar', 'restaurant', 'beach', 'guest house', 'hospedaria', 'cascata', 'museu', 'miradouro', 'lodge', 'pousada']);
@@ -62,21 +61,33 @@ const telefone = t => (t.phone || t['contact:phone'] || t['contact:mobile'] || '
 const endereco = t => [[t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' '), t['addr:suburb'] || t['addr:neighbourhood']].filter(Boolean).join(', ').slice(0, 200) || null;
 
 // Lê o OpenStreetMap (tenta vários servidores públicos) e devolve os lugares já classificados e localizados no mapa oficial
-async function lerOSM({ consulta = CONSULTA, espelhos = ESPELHOS, fetchFn = fetch } = {}) {
-  let ultimoErro = null, dados = null;
+async function pedirOverpass(consulta, espelhos, fetchFn, ms) {
+  let ultimoErro = null;
   for (const url of espelhos) {
-    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 200000);
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), ms);
     try {
       const r = await fetchFn(url, { method: 'POST', headers: { 'User-Agent': UA, Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(consulta), signal: ctl.signal });
       const txt = await r.text();
       if (!r.ok) throw new Error(`${new URL(url).host} respondeu ${r.status}`);
-      dados = JSON.parse(txt); if (!Array.isArray(dados.elements)) throw new Error('resposta sem elementos');
-      if (dados.remark && /runtime error|timeout/i.test(dados.remark) && !dados.elements.length) throw new Error(dados.remark.slice(0, 150));
-      break;
-    } catch (e) { ultimoErro = e.name === 'AbortError' ? new Error(`${new URL(url).host} não respondeu a tempo`) : e; dados = null; }
+      const dados = JSON.parse(txt); if (!Array.isArray(dados.elements)) throw new Error('resposta sem elementos');
+      if (dados.remark && /runtime error|timeout|out of memory/i.test(dados.remark)) throw new Error(`${new URL(url).host}: ${dados.remark.slice(0, 120)}`);
+      return dados.elements;
+    } catch (e) { ultimoErro = e.name === 'AbortError' ? new Error(`${new URL(url).host} não respondeu a tempo`) : e; }
     finally { clearTimeout(tm); }
   }
-  if (!dados) throw new Error('OpenStreetMap indisponível: ' + (ultimoErro?.message || 'sem resposta'));
+  throw ultimoErro || new Error('sem resposta');
+}
+// Lê o OpenStreetMap por partes (tenta vários servidores públicos) e devolve os lugares classificados e localizados no mapa oficial
+async function lerOSM({ consultas = CONSULTAS, espelhos = ESPELHOS, fetchFn = fetch, ms = 150000 } = {}) {
+  const elementos = [], falhas = [];
+  // OSM_FICHEIRO: elementos já extraídos (ex.: do ficheiro completo de Angola da Geofabrik, scripts/extrair-osm.py)
+  if (process.env.OSM_FICHEIRO) elementos.push(...JSON.parse(require('node:fs').readFileSync(process.env.OSM_FICHEIRO, 'utf8')).elements);
+  else for (const [nome, q] of Object.entries(consultas)) {
+    try { elementos.push(...await pedirOverpass(AREA + q + 'out center tags;', espelhos, fetchFn, ms)); }
+    catch (e) { falhas.push(`${nome}: ${e.message}`); }
+  }
+  if (!elementos.length) throw new Error('OpenStreetMap indisponível: ' + falhas.join(' | '));
+  const dados = { elements: elementos };
   const out = [], vistos = new Set();
   for (const el of dados.elements) {
     const t = el.tags || {}; const nome = String(t['name:pt'] || t.name || '').trim().replace(/\s+/g, ' ');
@@ -90,6 +101,7 @@ async function lerOSM({ consulta = CONSULTA, espelhos = ESPELHOS, fetchFn = fetc
       descricao_osm: (t['description:pt'] || t.description || '').slice(0, 400) || null, cozinha: (t.cuisine || '').split(/[;,]/).map(x => COZINHA[x.trim()] || null).filter(Boolean).slice(0, 2).join(' · ') || null,
       estrelas: /^[1-5]$/.test(t.stars || '') ? Number(t.stars) : null, quartos: /^\d{1,4}$/.test(t.rooms || '') ? Number(t.rooms) : null });
   }
+  out.falhas = falhas;
   return out;
 }
 
@@ -158,4 +170,4 @@ async function localizarExperiencias(d) {
   return n;
 }
 
-module.exports = { lerOSM, gravarLugar, contexto, classificar, localizarExperiencias, CONSULTA, ESPELHOS };
+module.exports = { lerOSM, gravarLugar, contexto, classificar, localizarExperiencias, CONSULTAS, ESPELHOS };

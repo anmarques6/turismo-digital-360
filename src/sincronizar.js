@@ -58,7 +58,7 @@ async function obter(url, op = {}) {
 
 const ADAPTADORES = {
   // OpenStreetMap (Overpass): lugares turísticos publicados; o endereço da fonte é tentado primeiro, depois os servidores alternativos
-  async osm(fonte) { const o = require('./osm'); return { lugares: await o.lerOSM({ espelhos: [...new Set([fonte.endpoint, ...o.ESPELHOS].filter(Boolean))] }) }; },
+  async osm(fonte) { const o = require('./osm'); const lugares = await o.lerOSM({ espelhos: [...new Set([fonte.endpoint, ...o.ESPELHOS].filter(Boolean))], ms: Number(process.env.OSM_TEMPO_MS) || 90000 }); return { lugares, aviso: lugares.falhas?.length ? 'Partes por ler: ' + lugares.falhas.join(' | ') : null }; },
   // Rádio 5 / RNA: {"success":true,"data":[{id, data_hora, liga_nome, jornada, casa_nome, fora_nome, estadio_local, estado, pontos_casa, pontos_fora}]}
   async json_rna(fonte) {
     const j = await obter(fonte.endpoint);
@@ -156,7 +156,7 @@ async function sincronizarFonte(DB, tx, fonteId, origem = 'admin') {
         c.alterados += await osm.localizarExperiencias(d);
       }
     });
-    await DB.run(`UPDATE sincronizacoes SET fim = ?, estado = 'ok', lidos = ?, novos = ?, alterados = ?, duplicados = ? WHERE id = ?`, agoraSQL(), c.lidos, c.novos, c.alterados, c.duplicados, exec.id);
+    await DB.run(`UPDATE sincronizacoes SET fim = ?, estado = 'ok', lidos = ?, novos = ?, alterados = ?, duplicados = ?, erro = ? WHERE id = ?`, agoraSQL(), c.lidos, c.novos, c.alterados, c.duplicados, dados.aviso || null, exec.id);
     await DB.run(`UPDATE fontes SET ultima_sync = ?, ultimo_estado = 'ok', ultimo_erro = NULL, falhas_seguidas = 0 WHERE id = ?`, agoraSQL(), fonte.id);
     return { ...c, estado: 'ok', fonte: fonte.nome };
   } catch (e) {
