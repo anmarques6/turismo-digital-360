@@ -16,7 +16,7 @@ const ESPELHOS = (process.env.OVERPASS_URL ? [process.env.OVERPASS_URL] : []).co
 const AREA = '[out:json][timeout:120];area["ISO3166-1"="AO"][admin_level=2]->.a;';
 const CONSULTAS = {
   praias: 'nwr["natural"="beach"]["name"](area.a);',
-  natureza_cultura: '(nwr["natural"="waterfall"]["name"](area.a);nwr["boundary"="national_park"]["name"](area.a);nwr["tourism"~"^(museum|viewpoint|zoo|theme_park)$"]["name"](area.a);nwr["historic"~"^(fort|castle|monument|archaeological_site)$"]["name"](area.a););',
+  natureza_cultura: '(nwr["natural"="waterfall"]["name"](area.a);nwr["waterway"="waterfall"]["name"](area.a);nwr["boundary"="national_park"]["name"](area.a);nwr["tourism"~"^(museum|viewpoint|zoo|theme_park)$"]["name"](area.a);nwr["historic"~"^(fort|castle|monument|archaeological_site)$"]["name"](area.a););',
   alojamentos: '(nwr["tourism"~"^(hotel|motel|guest_house|hostel|apartment|chalet)$"]["name"](area.a);nwr["leisure"="resort"]["name"](area.a););',
   restaurantes: 'nwr["amenity"="restaurant"]["name"](area.a);',
 };
@@ -35,7 +35,7 @@ const IMG_REST = ['/img/r_mar.jpg', '/img/r_sabor.jpg', '/img/r_tasca.jpg'];
 function classificar(t) {
   const nome = t.name || '';
   if (t.natural === 'beach') return { tabela: 'destinos', categoria: 'Praias', o: 'Praia' };
-  if (t.natural === 'waterfall') return { tabela: 'destinos', categoria: 'Natureza', o: 'Queda de água' };
+  if (t.natural === 'waterfall' || t.waterway === 'waterfall') return { tabela: 'destinos', categoria: 'Natureza', o: 'Queda de água' };
   if (t.boundary === 'national_park') return { tabela: 'destinos', categoria: 'Natureza', o: 'Parque nacional' };
   if (t.tourism === 'viewpoint') return { tabela: 'destinos', categoria: 'Natureza', o: 'Miradouro' };
   if (t.tourism === 'zoo') return { tabela: 'destinos', categoria: 'Natureza', o: 'Jardim zoológico' };

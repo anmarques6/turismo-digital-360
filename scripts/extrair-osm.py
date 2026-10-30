@@ -6,7 +6,7 @@ import sys, json, re, osmium
 
 def interessa(t):
     if 'name' not in t and 'name:pt' not in t: return False
-    if t.get('natural') in ('beach', 'waterfall'): return True
+    if t.get('natural') in ('beach', 'waterfall') or t.get('waterway') == 'waterfall': return True
     if t.get('boundary') == 'national_park': return True
     if re.fullmatch(r'museum|viewpoint|zoo|theme_park|hotel|motel|guest_house|hostel|apartment|chalet', t.get('tourism', '')): return True
     if re.fullmatch(r'fort|castle|monument|archaeological_site', t.get('historic', '')): return True
@@ -40,4 +40,4 @@ class H(osmium.SimpleHandler):
 h = H(); h.apply_file(sys.argv[1], locations=True, idx='flex_mem')
 json.dump({'elements': h.out, 'fonte': 'Geofabrik angola-latest.osm.pbf (OpenStreetMap, ODbL)'}, open(sys.argv[2], 'w'), ensure_ascii=False)
 from collections import Counter
-print(len(h.out), dict(Counter(next((f'{k}={e["tags"][k]}' for k in ('natural', 'boundary', 'tourism', 'historic', 'leisure', 'amenity') if k in e['tags']), '?') for e in h.out)))
+print(len(h.out), dict(Counter(next((f'{k}={e["tags"][k]}' for k in ('natural', 'waterway', 'boundary', 'tourism', 'historic', 'leisure', 'amenity') if k in e['tags']), '?') for e in h.out)))
