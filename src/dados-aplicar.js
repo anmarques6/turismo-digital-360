@@ -100,4 +100,15 @@ async function aplicarDadosV34(d, { desativarExemplos = false } = {}) {
   return c;
 }
 
-module.exports = { aplicarDadosV34, aplicarMapa };
+// v3.5: nome oficial «Quedas de Calandula»; experiências passam a ter a localização do lugar onde acontecem
+async function aplicarDadosV35(d) {
+  const trocar = (col) => `REPLACE(REPLACE(REPLACE(${col}, 'Cataratas da Kalandula', 'Quedas de Calandula'), 'cataratas da Kalandula', 'quedas de Calandula'), 'Kalandula', 'Calandula')`;
+  for (const [t, cols] of [['destinos', ['nome', 'descricao', 'historia', 'quando_ir', 'dica', 'i18n']], ['experiencias', ['titulo', 'descricao', 'descricao_longa', 'local', 'i18n']], ['eventos', ['titulo', 'descricao']], ['notificacoes', ['titulo', 'corpo']], ['reservas', ['item_nome']]]) {
+    const existentes = (await d.all(`SELECT column_name FROM information_schema.columns WHERE table_name = ?`, t)).map(c => c.column_name);
+    for (const c of cols.filter(c => existentes.includes(c))) await d.run(`UPDATE ${t} SET ${c} = ${trocar(c)} WHERE ${c} LIKE '%Kalandula%'`);
+  }
+  await d.run(`UPDATE destinos SET palavras_chave = COALESCE(palavras_chave, '') || ',kalandula,calandula,quedas de calandula' WHERE nome = 'Quedas de Calandula' AND COALESCE(palavras_chave, '') NOT LIKE '%quedas de calandula%'`);
+  await require('./osm').localizarExperiencias(d);
+}
+
+module.exports = { aplicarDadosV34, aplicarDadosV35, aplicarMapa };

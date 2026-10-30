@@ -88,7 +88,7 @@ I18N.dic([
   ['Créditos das imagens', 'Image credits', 'Crédits des images', 'Créditos de las imágenes'],
   ['Conta de demonstração: <b>{email}</b> · senha <b>{senha}</b>', 'Demo account: <b>{email}</b> · password <b>{senha}</b>', 'Compte de démonstration : <b>{email}</b> · mot de passe <b>{senha}</b>', 'Cuenta de demostración: <b>{email}</b> · contraseña <b>{senha}</b>'],
   ['preencher', 'fill in', 'remplir', 'rellenar'],
-  ['Cataratas da Kalandula, Malanje', 'Kalandula Falls, Malanje', 'Chutes de Kalandula, Malanje', 'Cataratas de Kalandula, Malanje'],
+  ['Quedas de Calandula, Malanje', 'Calandula Falls, Malanje', 'Chutes de Calandula, Malanje', 'Cataratas de Calandula, Malanje'],
   ['E-mail ou telefone', 'Email or phone', 'E-mail ou téléphone', 'Correo o teléfono'],
   ['E-mail', 'Email', 'E-mail', 'Correo electrónico'],
   ['Senha', 'Password', 'Mot de passe', 'Contraseña'],
@@ -507,7 +507,7 @@ I18N.dic([
   ['Olá! Sou a ENDA', "Hi! I'm ENDA", 'Bonjour ! Je suis ENDA', '¡Hola! Soy ENDA'],
   ['Falo consigo, sugiro lugares e preparo convites. Quer uma sugestão para este fim de semana?', 'I talk with you, suggest places and prepare invitations. Would you like an idea for this weekend?', 'Je vous parle, je suggère des lieux et je prépare des invitations. Une idée pour ce week-end ?', 'Hablo contigo, sugiero lugares y preparo invitaciones. ¿Quieres una sugerencia para este fin de semana?'],
   ['Sabia que…', 'Did you know…', 'Le saviez-vous…', '¿Sabías que…?'],
-  ['As Cataratas da Kalandula têm mais de 100 metros de altura. Peça-me a história completa.', 'The Kalandula Falls are over 100 metres high. Ask me for the full story.', 'Les chutes de Kalandula mesurent plus de 100 mètres de haut. Demandez-moi toute l’histoire.', 'Las cataratas de Kalandula tienen más de 100 metros de altura. Pídeme la historia completa.'],
+  ['As Quedas de Calandula têm mais de 100 metros de altura. Peça-me a história completa.', 'The Calandula Falls are over 100 metres high. Ask me for the full story.', 'Les chutes de Calandula mesurent plus de 100 mètres de haut. Demandez-moi toute l’histoire.', 'Las cataratas de Calandula tienen más de 100 metros de altura. Pídeme la historia completa.'],
   ['Oferta ativa', 'Offer on now', 'Offre en cours', 'Oferta activa'],
   ['Sugere-me um passeio', 'Suggest a trip', 'Suggère-moi une sortie', 'Sugiéreme un paseo'],
   ['Explica as Pedras Negras', 'Explain the Pedras Negras', 'Explique les Pedras Negras', 'Explica las Pedras Negras'],
@@ -523,7 +523,7 @@ I18N.dic([
   ['Monta-me um roteiro', 'Build me an itinerary', 'Prépare-moi un itinéraire', 'Prepárame un itinerario'],
   ['Explica o primeiro', 'Explain the first one', 'Explique le premier', 'Explica el primero'],
   ['Explica o Mussulo', 'Explain Mussulo', 'Explique le Mussulo', 'Explica el Mussulo'],
-  ['Explica as Cataratas da Kalandula', 'Explain the Kalandula Falls', 'Explique les chutes de Kalandula', 'Explica las cataratas de Kalandula'],
+  ['Explica as Quedas de Calandula', 'Explain the Calandula Falls', 'Explique les chutes de Calandula', 'Explica las cataratas de Calandula'],
   ['Lembra-me deste evento', 'Remind me about this event', 'Rappelle-moi cet événement', 'Recuérdame este evento'],
   ['Lembra-me do primeiro', 'Remind me about the first one', 'Rappelle-moi le premier', 'Recuérdame el primero'],
   ['Reservar o primeiro', 'Book the first one', 'Réserve le premier', 'Reservar el primero'],
@@ -787,3 +787,10 @@ I18N.re([
   [/^(.+) em linha recta$/, '$1 as the crow flies', '$1 à vol d’oiseau', '$1 en línea recta'], [/^Verificado a (.+)$/, 'Verified on $1', 'Vérifié le $1', 'Verificado el $1'], [/^Fonte: (.+)$/, 'Source: $1', 'Source : $1', 'Fuente: $1'], [/^Como chego a (.+)\?$/, 'How do I get to $1?', 'Comment aller à $1 ?', '¿Cómo llego a $1?'],
   [/^Não há lugares registados a menos de (\d+) km\. Aumente o raio\.$/, 'No places registered within $1 km. Increase the radius.', 'Aucun lieu à moins de $1 km. Augmentez le rayon.', 'No hay lugares a menos de $1 km. Aumente el radio.'],
 ]);
+I18N.dic([
+  ['Onde acontece', 'Where it happens', 'Où cela se passe', 'Dónde se realiza'], ['Imagem ilustrativa', 'Illustrative image', 'Image d’illustration', 'Imagen ilustrativa'],
+  ['Residenciais', 'Guesthouses', 'Résidences', 'Residenciales'], ['Hospedarias', 'Hostels', 'Auberges', 'Hospedajes'], ['Lodges', 'Lodges', 'Lodges', 'Lodges'], ['Alojamentos', 'Accommodation', 'Hébergements', 'Alojamientos'],
+  ['Mais perto', 'Nearest', 'Les plus proches', 'Más cerca'], ['Restaurantes', 'Restaurants', 'Restaurants', 'Restaurantes'],
+  ['Quedas de Calandula', 'Calandula Falls', 'Chutes de Calandula', 'Cataratas de Calandula'],
+]);
+I18N.re([[/^Ver mais \((\d+) restantes\)$/, 'Show more ($1 left)', 'Voir plus ($1 restants)', 'Ver más ($1 restantes)']]);

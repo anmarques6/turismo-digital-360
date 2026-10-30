@@ -275,7 +275,7 @@ function roteiro(n, prov) {
   const custo = usar.flat().reduce((s, [, v]) => s + (v && typeof v === 'object' ? (v.preco || v.preco_medio || 0) : 0), 0);
   fala += t('O custo estimado por pessoa nas atividades pagas é de {valor}, sem alojamento.', { valor: kz(custo) });
   const primeiraXp = usar.flat().map(x => x[1]).find(v => v && v.titulo); if (primeiraXp) K.lastItem = getItem('experiencia:' + primeiraXp.id);
-  kSay(fala, { html2: html, chips: ['Sugere-me onde dormir', 'Convidar amigos', 'Explica as Cataratas da Kalandula'] });
+  kSay(fala, { html2: html, chips: ['Sugere-me onde dormir', 'Convidar amigos', 'Explica as Quedas de Calandula'] });
 }
 
 /* ---------- convites ---------- */
@@ -332,7 +332,7 @@ function DICAS() {
   return [
     ev && { t: 'ENDA sugere', b: t('{nome} está a chegar ({data}). Quer que prepare um convite para os seus amigos?', { nome: ev.titulo, data: dfmt(ev.data) }), q: 'Convidar amigos' },
     mus && { t: 'ENDA sugere', b: t('Fim de semana à vista: que tal um pôr do sol no Mussulo? Experiência a partir de {preco}.', { preco: kz(mus.preco) }), q: 'Explica o Mussulo' },
-    { t: 'Sabia que…', b: 'As Cataratas da Kalandula têm mais de 100 metros de altura. Peça-me a história completa.', q: 'Explica as Cataratas da Kalandula' },
+    { t: 'Sabia que…', b: 'As Quedas de Calandula têm mais de 100 metros de altura. Peça-me a história completa.', q: 'Explica as Quedas de Calandula' },
     of && { t: 'Oferta ativa', b: t('{pct}% de desconto no {nome} esta semana.', { pct: of.oferta_pct, nome: of.nome }), q: 'Sugere-me onde dormir' },
   ].filter(Boolean);
 }

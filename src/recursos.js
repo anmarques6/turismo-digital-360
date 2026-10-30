@@ -4,7 +4,7 @@
 const CAT = {
   destinos:     ['Praias','Natureza','Cultura','Aventura','Cidades'],
   experiencias: ['Aventura','Cultura','Natureza','Gastronomia','Bem-estar'],
-  alojamentos:  ['Hotéis','Pousadas','Resorts','Apartamentos','Villas'],
+  alojamentos:  ['Hotéis','Resorts','Residenciais','Pousadas','Hospedarias','Lodges','Apartamentos','Villas'],
   eventos:      ['Música','Cultura','Festivais','Esportes','Gastronomia','Turismo','Família','Negócios'],
   pratos:       ['Pratos','Doces','Bebidas','Comida de rua'],
   viaturas:     ['Económicos','SUVs','Sedans','Luxo','Vans'],
@@ -21,6 +21,8 @@ const geo = {
   coord_fonte: { t: 'text', label: 'Fonte das coordenadas (URL)' },
   horario: { t: 'text', label: 'Horário (confirmado)' },
   verificado_em: { t: 'date', label: 'Última verificação' },
+  imagem_ilustrativa: { t: 'bool', label: 'A imagem é ilustrativa (não mostra o lugar exacto)', def: 0 },
+  osm_id: { t: 'text', label: 'Identificador no OpenStreetMap', ro: 1 },
 };
 
 

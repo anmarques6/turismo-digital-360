@@ -255,3 +255,42 @@ test('I3 tarefa diária de pesquisa responde', async () => {
   const r = await req('GET', '/api/cron/pesquisa');
   assert.equal(r.status, 200); assert.ok(Array.isArray(r.j.fontes));
 });
+
+// ---------- J. Lugares públicos do OpenStreetMap e nome oficial ----------
+test('J1 importação do OpenStreetMap: praias, alojamentos e restaurantes no mapa oficial, sem duplicar', async () => {
+  const fontes = (await req('GET', '/api/admin/catalogo/fontes', null, admin)).j;
+  const osm = fontes.find(f => f.metodo === 'osm'); assert.ok(osm, 'fonte OpenStreetMap existe');
+  let r = await req('POST', `/api/admin/fontes/${osm.id}/sincronizar`, null, admin);
+  assert.equal(r.j.estado, 'ok', r.j.erro);
+  // 8 elementos: «Praia» genérica e o de Lisboa ficam de fora; Quedas de Calandula e Palmeiras já existiam
+  assert.equal(r.j.lidos, 6); assert.equal(r.j.novos, 4);
+  const c = (await req('GET', '/api/catalogo')).j;
+  const praia = c.destinos.find(d => d.nome === 'Praia Morena');
+  assert.equal(praia.categoria, 'Praias'); assert.equal(praia.provincia, 'Benguela'); assert.ok(praia.municipio); assert.equal(praia.imagem_ilustrativa, 1);
+  assert.match(praia.fonte, /openstreetmap\.org\/way\/101/);
+  assert.equal(c.destinos.filter(d => /Calandula/.test(d.nome)).length, 1, 'não duplica as Quedas de Calandula');
+  const palm = c.alojamentos.filter(a => a.nome === 'Palmeiras Suite Hotel');
+  assert.equal(palm.length, 1); assert.ok(palm[0].latitude != null, 'o hotel existente recebeu a localização');
+  const res = c.alojamentos.find(a => a.nome === 'Residencial Teste Kinaxixe');
+  assert.equal(res.tipo, 'Residenciais'); assert.equal(res.parceiro, 0); assert.equal(res.preco_noite, null); assert.equal(res.site, 'https://residencialteste.ao/');
+  assert.equal(c.alojamentos.find(a => a.nome === 'Resort Teste do Namibe').tipo, 'Resorts');
+  const rest = c.restaurantes.find(x => x.nome === 'Restaurante Teste da Ilha');
+  assert.equal(rest.especialidade, 'Marisqueira · Cozinha angolana'); assert.equal(rest.nivel_preco, null); assert.equal(rest.horario, 'Mo-Su 12:00-23:00');
+  assert.ok(!c.restaurantes.some(x => x.nome === 'Restaurante de Lisboa'));
+  // segunda leitura: nada novo
+  r = await req('POST', `/api/admin/fontes/${osm.id}/sincronizar`, null, admin);
+  assert.equal(r.j.novos, 0);
+  // perto de mim encontra a residencial
+  const perto = (await req('GET', '/api/geo/perto?lat=-8.825&lon=13.240&raio=2&tipos=alojamento')).j;
+  assert.ok(perto.itens.some(i => i.nome === 'Residencial Teste Kinaxixe'));
+});
+test('J2 nome oficial «Quedas de Calandula» e experiências com localização', async () => {
+  const c = (await req('GET', '/api/catalogo')).j;
+  assert.ok(c.destinos.some(d => d.nome === 'Quedas de Calandula'));
+  assert.ok(!JSON.stringify(c.destinos).includes('Kalandula') || c.destinos.every(d => !/Kalandula/.test(d.nome)));
+  const xp = c.experiencias.find(x => /Calandula/.test(x.titulo));
+  assert.ok(xp && xp.latitude != null, 'a experiência das Quedas tem localização');
+  const en = (await req('GET', '/api/catalogo?lang=en')).j.destinos.find(d => d.id === c.destinos.find(x => x.nome === 'Quedas de Calandula').id);
+  assert.ok(!/Kalandula/.test(en.nome));
+  const r = await req('GET', '/api/cron/lugares'); assert.equal(r.status, 200);
+});

@@ -50,8 +50,8 @@ const SCHEMA = path.join(__dirname, '..', 'database', 'schema.sql');
 let pronta = null;
 function garantirBD() {
   if (!pronta) pronta = (async () => {
-    // auditoria é a tabela mais recente (v3.4): se faltar, a base de dados é actualizada
-    const t = await db.get(`SELECT to_regclass('public.imagens') AS ok, to_regclass('public.utilizadores') AS u, to_regclass('public.auditoria') AS v`);
+    // o índice destinos_osm_id é o objecto mais recente (v3.5): se faltar, a base de dados é actualizada
+    const t = await db.get(`SELECT to_regclass('public.imagens') AS ok, to_regclass('public.utilizadores') AS u, to_regclass('public.destinos_osm_id') AS v`);
     if (t.ok && t.u && t.v && (await db.get('SELECT EXISTS (SELECT 1 FROM utilizadores) AS e')).e) return;
     // Tudo numa só transacção (compatível com o pooler PgBouncer da Neon); o bloqueio
     // impede que dois pedidos em simultâneo criem a base de dados duas vezes.
@@ -67,7 +67,8 @@ function garantirBD() {
           await d.run(`UPDATE ${tab} SET i18n = ? WHERE ${campo} = ? AND (i18n IS NULL OR i18n = '' OR i18n = '{}')`, JSON.stringify(v), nome);
         // v3.4: coordenadas, gastronomia com fontes, fontes de dados, estádios e jogos; os eventos de exemplo deixam de ser mostrados
         await require('./dados-aplicar').aplicarDadosV34(d, { desativarExemplos: true });
-        console.log('Base de dados actualizada para a versão 3.4.');
+        await require('./dados-aplicar').aplicarDadosV35(d);
+        console.log('Base de dados actualizada para a versão 3.5.');
       }
     });
   })().catch(e => { pronta = null; throw e; });

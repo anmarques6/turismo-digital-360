@@ -57,6 +57,8 @@ async function obter(url, op = {}) {
 }
 
 const ADAPTADORES = {
+  // OpenStreetMap (Overpass): lugares turísticos publicados; o endereço da fonte é tentado primeiro, depois os servidores alternativos
+  async osm(fonte) { const o = require('./osm'); return { lugares: await o.lerOSM({ espelhos: [...new Set([fonte.endpoint, ...o.ESPELHOS].filter(Boolean))] }) }; },
   // Rádio 5 / RNA: {"success":true,"data":[{id, data_hora, liga_nome, jornada, casa_nome, fora_nome, estadio_local, estado, pontos_casa, pontos_fora}]}
   async json_rna(fonte) {
     const j = await obter(fonte.endpoint);
@@ -148,6 +150,11 @@ async function sincronizarFonte(DB, tx, fonteId, origem = 'admin') {
       const estadioDe = await mapaEstadios(d);
       for (const j of dados.jogos || []) { c.lidos++; await gravarJogo(d, fonte, j, estadioDe, 'sincronizacao:' + fonte.nome, c); }
       for (const e of dados.eventos || []) { c.lidos++; await gravarEvento(d, fonte, e, 'sincronizacao:' + fonte.nome, c); }
+      if (dados.lugares) {
+        const osm = require('./osm'); const ctx = await osm.contexto(d);
+        for (const l of dados.lugares) { c.lidos++; await osm.gravarLugar(d, l, ctx, c); }
+        c.alterados += await osm.localizarExperiencias(d);
+      }
     });
     await DB.run(`UPDATE sincronizacoes SET fim = ?, estado = 'ok', lidos = ?, novos = ?, alterados = ?, duplicados = ? WHERE id = ?`, agoraSQL(), c.lidos, c.novos, c.alterados, c.duplicados, exec.id);
     await DB.run(`UPDATE fontes SET ultima_sync = ?, ultimo_estado = 'ok', ultimo_erro = NULL, falhas_seguidas = 0 WHERE id = ?`, agoraSQL(), fonte.id);
@@ -165,10 +172,11 @@ async function sincronizarFonte(DB, tx, fonteId, origem = 'admin') {
 }
 
 // Tarefa diária: corre as fontes automáticas cuja frequência já passou; arquiva eventos passados
-async function sincronizarTudo(DB, tx, origem = 'cron', { ia = null, ate = Infinity } = {}) {
+async function sincronizarTudo(DB, tx, origem = 'cron', { ia = null, ate = Infinity, lugares = false } = {}) {
   const out = [];
+  // lugares: true = só a importação semanal do OpenStreetMap (demora mais); false = todas as outras
   // ia: true = só fontes lidas pela IA; false = só as outras; null = todas. ate = hora limite (ms) para não exceder o tempo da função
-  const L = (await DB.all(`SELECT * FROM fontes WHERE ativo = 1 AND metodo <> 'manual' ORDER BY ultima_sync NULLS FIRST, id`)).filter(f => ia == null || /^ia_/.test(f.metodo) === ia);
+  const L = (await DB.all(`SELECT * FROM fontes WHERE ativo = 1 AND metodo <> 'manual' ORDER BY ultima_sync NULLS FIRST, id`)).filter(f => (ia == null || /^ia_/.test(f.metodo) === ia) && (f.metodo === 'osm') === lugares);
   for (const f of L) {
     if (Date.now() > ate) { out.push({ fonte: f.nome, estado: 'adiada', erro: 'tempo esgotado; fica para a próxima execução' }); continue; }
     const devido = !f.ultima_sync || Date.now() - Date.parse(f.ultima_sync.replace(' ', 'T') + 'Z') >= Math.max(1, f.frequencia_h - 1) * 36e5;

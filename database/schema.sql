@@ -575,3 +575,17 @@ CREATE TABLE IF NOT EXISTS auditoria (
   criado_em      TEXT    NOT NULL DEFAULT agora()
 );
 CREATE INDEX IF NOT EXISTS idx_auditoria_data ON auditoria(criado_em DESC);
+
+-- v3.5 · Lugares públicos do OpenStreetMap (praias, alojamentos, restaurantes…) e novos tipos de alojamento
+DO $$ BEGIN
+  ALTER TABLE alojamentos DROP CONSTRAINT IF EXISTS alojamentos_tipo_check;
+  ALTER TABLE alojamentos ADD CONSTRAINT alojamentos_tipo_check CHECK (tipo IN ('Hotéis','Resorts','Residenciais','Pousadas','Hospedarias','Lodges','Apartamentos','Villas'));
+END $$;
+ALTER TABLE restaurantes ALTER COLUMN nivel_preco DROP NOT NULL;
+DO $$ DECLARE t text; BEGIN
+  FOREACH t IN ARRAY ARRAY['destinos','experiencias','alojamentos','restaurantes','eventos'] LOOP
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS osm_id TEXT', t);
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS imagem_ilustrativa SMALLINT NOT NULL DEFAULT 0', t);
+    EXECUTE format('CREATE UNIQUE INDEX IF NOT EXISTS %I ON %I (osm_id) WHERE osm_id IS NOT NULL', t || '_osm_id', t);
+  END LOOP;
+END $$;

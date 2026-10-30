@@ -185,6 +185,11 @@ function registar({ api, auth, admin, corpo, auditar, limitarTentativas, listarP
     pesquisa.definirCredencial(req.headers['x-vercel-oidc-token']);
     return sincronizarTudo({ get, all, run }, tx, 'cron', { ia: true, ate: Date.now() + 200e3 });
   });
+  // Importação semanal de lugares públicos do OpenStreetMap (praias, alojamentos, restaurantes, monumentos…)
+  api.get('/api/cron/lugares', async req => {
+    if (process.env.CRON_SECRET && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) erro(401, 'Não autorizado.');
+    return sincronizarTudo({ get, all, run }, tx, 'cron', { lugares: true });
+  });
   api.post('/api/admin/fontes/:id/sincronizar', async req => {
     await admin(req); pesquisa.definirCredencial(req.headers['x-vercel-oidc-token']); const r = await sincronizarFonte({ get, all, run }, tx, Number(req.params.id), 'admin');
     await auditar(req, 'sincronizar', 'fontes', Number(req.params.id), `${r.estado}: ${r.novos} novos, ${r.alterados} alterados${r.erro ? ' · ' + r.erro : ''}`);

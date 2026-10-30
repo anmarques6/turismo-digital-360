@@ -8,7 +8,7 @@ const osm = (tipo, id) => `https://www.openstreetmap.org/${tipo}/${id}`;
 const COORDENADAS = {
   destinos: [
     ['Ilha do Mussulo', -8.9870931, 13.0348936, 'aproximada', osm('way', 656298664), 'Restinga do Mussulo', 'Belas', null],
-    ['Cataratas da Kalandula', -9.0740668, 16.0003160, 'verificada', osm('node', 2051535982), 'Quedas de Calandula, rio Lucala', 'Calandula', null],
+    ['Quedas de Calandula', -9.0740668, 16.0003160, 'verificada', osm('node', 2051535982), 'Quedas de Calandula, rio Lucala', 'Calandula', null],
     ['Pedras Negras de Pungo Andongo', -9.6762896, 15.6230882, 'verificada', osm('way', 202428550), 'Pungo Andongo', 'Cacuso', null],
     ['Baía dos Tigres', -16.6632629, 11.7704620, 'aproximada', osm('way', 765576472), 'Parque Nacional do Iona', 'Tômbwa', null],
     ['Luanda', -8.8053524, 13.2232637, 'aproximada', osm('way', 460638748), 'Avenida 4 de Fevereiro (Marginal)', 'Luanda', 'Kinanga'],
@@ -16,7 +16,7 @@ const COORDENADAS = {
     ['Trilho das Pedras Negras', -9.6762896, 15.6230882, 'aproximada', osm('way', 202428550), 'Pungo Andongo', 'Cacuso', null],
   ],
   experiencias: [
-    ['Aventura nas Cataratas da Kalandula', -9.0740668, 16.0003160, 'aproximada', osm('node', 2051535982), 'Quedas de Calandula', 'Calandula', null],
+    ['Aventura nas Quedas de Calandula', -9.0740668, 16.0003160, 'aproximada', osm('node', 2051535982), 'Quedas de Calandula', 'Calandula', null],
     ['Pôr do Sol na Ilha do Mussulo', -8.9870931, 13.0348936, 'aproximada', osm('way', 656298664), 'Restinga do Mussulo', 'Belas', null],
     ['Trilha nas Pedras Negras', -9.6762896, 15.6230882, 'aproximada', osm('way', 202428550), 'Pungo Andongo', 'Cacuso', null],
     ['City Tour Histórico em Luanda', -8.8076194, 13.2232255, 'aproximada', osm('way', 1124468591), 'Fortaleza de São Miguel (ponto de partida indicativo)', 'Luanda', 'Kinanga'],
@@ -106,6 +106,7 @@ const FONTES = [
   { nome: 'VerAngola — agenda de eventos (pesquisa diária com IA)', url: 'https://www.verangola.net/', tipo: 'eventos', metodo: 'ia_pagina', endpoint: 'https://www.verangola.net/va/pt/{MMAAAA}/eventos/', oficial: 0, frequencia_h: 24, notas: 'Agenda pública com ~24 eventos por página (música, feiras, teatro, gastronomia, desporto). {MMAAAA} = mês corrente. Lida diariamente; cada evento fica com a ligação para a página do VerAngola. Respeita robots.txt.' },
   { nome: 'VerAngola — agenda, página 2 (pesquisa diária com IA)', url: 'https://www.verangola.net/', tipo: 'eventos', metodo: 'ia_pagina', endpoint: 'https://www.verangola.net/va/pt/{MMAAAA}/eventos/?ls-art24=24', oficial: 0, frequencia_h: 24, notas: 'Segunda página da agenda do VerAngola.' },
   { nome: 'Notícias e rumores (Google Notícias) — pesquisa diária com IA', url: 'https://news.google.com/', tipo: 'eventos', metodo: 'ia_noticias', endpoint: 'https://news.google.com/rss/search?q=Angola%20(festival%20OR%20concerto%20OR%20feira%20OR%20evento%20OR%20exposi%C3%A7%C3%A3o%20OR%20carnaval%20OR%20maratona)%20when%3A14d&hl=pt-PT&gl=PT&ceid=PT%3Apt-150', oficial: 0, frequencia_h: 24, notas: 'Feed RSS público de notícias (ANGOP, Jornal de Angola, Novo Jornal, etc.). Anúncios ainda não confirmados ficam marcados como «rumor»; cada um mantém a ligação para a notícia.' },
+  { nome: 'OpenStreetMap — praias, alojamentos, restaurantes e lugares turísticos', url: 'https://www.openstreetmap.org/', tipo: 'lugares', metodo: 'osm', endpoint: 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', oficial: 0, frequencia_h: 168, notas: 'Dados abertos do OpenStreetMap (ODbL), lidos semanalmente pela API Overpass: praias, quedas de água, parques nacionais, miradouros, museus, fortalezas, hotéis, resorts, residenciais, pousadas, lodges e restaurantes de Angola. Só entram lugares dentro do mapa oficial de municípios; lugares já existentes recebem a localização em falta e não são duplicados.' },
   { nome: 'Inserção manual (equipa Angola 365º)', url: null, tipo: 'eventos', metodo: 'manual', oficial: 0, frequencia_h: 0, notas: 'Eventos introduzidos e validados no painel.' },
 ];
 

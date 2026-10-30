@@ -230,9 +230,9 @@ test('entrada social recusada: sem cookie, código inválido, e-mail não verifi
 test('catálogo traduzido e traduções editáveis no painel', async () => {
   let r = await req('GET', '/api/catalogo?lang=en');
   const kal = r.j.destinos.find(d => d.id === 2);
-  assert.equal(kal.nome, 'Kalandula Falls'); assert.equal(kal.i18n, undefined);
-  assert.equal((await req('GET', '/api/catalogo?lang=es')).j.experiencias[0].titulo, 'Aventura en las cataratas de Kalandula');
-  assert.equal((await req('GET', '/api/catalogo?lang=xx')).j.destinos[1].nome, 'Cataratas da Kalandula');
+  assert.equal(kal.nome, 'Calandula Falls'); assert.equal(kal.i18n, undefined);
+  assert.equal((await req('GET', '/api/catalogo?lang=es')).j.experiencias[0].titulo, 'Aventura en las cataratas de Calandula');
+  assert.equal((await req('GET', '/api/catalogo?lang=xx')).j.destinos[1].nome, 'Quedas de Calandula');
   r = await req('PUT', '/api/admin/catalogo/pratos/1', { i18n: { en: { nome: 'Chicken muamba', lixo: 'x' }, de: { nome: 'Hähnchen' } } }, admin);
   assert.equal(r.status, 200); assert.deepEqual(r.j.i18n, { en: { nome: 'Chicken muamba' } });
   assert.equal((await req('GET', '/api/catalogo?lang=en')).j.pratos.find(p => p.id === 1).nome, 'Chicken muamba');

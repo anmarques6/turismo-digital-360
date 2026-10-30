@@ -35,6 +35,18 @@ globalThis.fetch = async (url, op) => {
     if (/quantas/i.test(t)) return dizer('mensagens=' + b.messages.length + ' modelo=' + b.model);
     return dizer('Olá, sou a ENDA AI.');
   }
+  // OpenStreetMap (Overpass): o 1.º servidor falha, o 2.º responde
+  if (u.startsWith('https://maps.mail.ru/osm/')) return new Response('Gateway Timeout', { status: 504 });
+  if (u.startsWith('https://overpass.kumi.systems/')) return json({ elements: [
+    { type: 'way', id: 101, center: { lat: -12.5829, lon: 13.4023 }, tags: { natural: 'beach', name: 'Praia Morena' } },
+    { type: 'node', id: 102, lat: -8.7710, lon: 13.2380, tags: { natural: 'beach', name: 'Praia' } },
+    { type: 'node', id: 103, lat: -8.9190, lon: 13.1830, tags: { tourism: 'hotel', name: 'Palmeiras Suite Hotel', stars: '4' } },
+    { type: 'node', id: 104, lat: -8.8250, lon: 13.2400, tags: { tourism: 'guest_house', name: 'Residencial Teste Kinaxixe', phone: '+244 923 000 000', website: 'residencialteste.ao' } },
+    { type: 'node', id: 105, lat: -8.8120, lon: 13.2330, tags: { amenity: 'restaurant', name: 'Restaurante Teste da Ilha', cuisine: 'seafood;regional', opening_hours: 'Mo-Su 12:00-23:00' } },
+    { type: 'node', id: 106, lat: 38.72, lon: -9.14, tags: { amenity: 'restaurant', name: 'Restaurante de Lisboa' } },
+    { type: 'node', id: 107, lat: -9.0745, lon: 16.0010, tags: { natural: 'waterfall', name: 'Quedas de Calandula' } },
+    { type: 'way', id: 108, center: { lat: -15.1960, lon: 12.1520 }, tags: { leisure: 'resort', name: 'Resort Teste do Namibe' } },
+  ] });
   // Rádio 5 (RNA): 1.ª leitura, 2.ª com um jogo alterado e um repetido, depois a fonte falha
   if (u.startsWith('https://teste.rna.ao/ajax_inicio.php?acao=jogos_proximos')) {
     globalThis.__rna = (globalThis.__rna || 0) + 1;

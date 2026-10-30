@@ -13,8 +13,8 @@ const DESTINOS = [
   { nome:'Ilha do Mussulo', prov:'Luanda', cat:'Praias', desc:'Praias paradisíacas e tranquilidade a poucos minutos da cidade.', rating:4.8, rev:126, img:'mussulo', destaque:1,
     kw:'mussulo,ilha do mussulo', historia:'A Ilha do Mussulo é, na verdade, uma restinga de areia com cerca de 30 quilómetros, a sul de Luanda. Chega-se de barco a partir do Embarcadouro, numa travessia curta. Tem águas calmas do lado da baía, ideais para banho e desportos náuticos, e praias abertas ao oceano do outro lado.',
     dica:'Vá durante a semana para apanhar menos gente e fique até ao pôr do sol, que é dos mais bonitos de Luanda.', quando:'Todo o ano; a época seca, de maio a setembro, tem o mar mais calmo.' },
-  { nome:'Cataratas da Kalandula', prov:'Malanje', cat:'Natureza', desc:'Uma das maiores e mais impressionantes cataratas de África.', rating:4.9, rev:98, img:'kalandula', destaque:1,
-    kw:'kalandula,calandula,cataratas,quedas', historia:'As Cataratas da Kalandula ficam no rio Lucala, na província de Malanje, a cerca de 360 quilómetros de Luanda. São das maiores quedas de água de África em volume, com mais de 100 metros de altura e várias centenas de metros de largura. O miradouro de cima dá a vista panorâmica, e um trilho leva até à base, onde se sente a força da água.',
+  { nome:'Quedas de Calandula', prov:'Malanje', cat:'Natureza', desc:'Uma das maiores e mais impressionantes cataratas de África.', rating:4.9, rev:98, img:'kalandula', destaque:1,
+    kw:'kalandula,calandula,cataratas,quedas', historia:'As Quedas de Calandula ficam no rio Lucala, na província de Malanje, a cerca de 360 quilómetros de Luanda. São das maiores quedas de água de África em volume, com mais de 100 metros de altura e várias centenas de metros de largura. O miradouro de cima dá a vista panorâmica, e um trilho leva até à base, onde se sente a força da água.',
     dica:'Leve calçado com boa aderência e uma capa para a água: perto da base fica tudo molhado.', quando:'Na época das chuvas, de novembro a abril, o caudal é mais impressionante.' },
   { nome:'Pedras Negras de Pungo Andongo', prov:'Malanje', cat:'Cultura', desc:'Formações rochosas únicas e cheias de história e misticismo.', rating:4.7, rev:87, img:'pungo', destaque:1,
     kw:'pedras negras,pungo,pungo andongo', historia:'As Pedras Negras de Pungo Andongo são enormes monólitos de rocha escura que se erguem na savana de Malanje. O lugar está ligado à história da Rainha Njinga Mbandi, e a tradição diz que as marcas na rocha são as pegadas dela. Foi também uma antiga sede do reino do Ndongo.',
@@ -35,7 +35,7 @@ const DESTINOS = [
 
 const INCLUI = ['Guia local especializado','Transporte ida e volta','Água mineral durante o tour','Paragens para fotos','Seguro de viagem'];
 const EXPERIENCIAS = [
-  { titulo:'Aventura nas Cataratas da Kalandula', prov:'Malanje', local:'Malanje', cat:'Natureza', desc:'Trilhas, vista panorâmica e banho nas águas cristalinas.', longo:'Viva uma experiência inesquecível na maior queda de água de Angola! Desfrute de trilhas guiadas, miradouros incríveis e banho nas águas cristalinas da Kalandula. Natureza, aventura e conexão com o essencial. Partida de Luanda às 05:30, almoço típico em Malanje e regresso ao fim do dia.', preco:25000, rating:4.9, rev:98, img:'xp_kal', dur:'1 dia', gmin:2, gmax:12, disp:'Todos os dias', idiomas:'PT, EN', gal:['g1','g2','g3','g4','kalandula'], destaque:1 },
+  { titulo:'Aventura nas Quedas de Calandula', prov:'Malanje', local:'Malanje', cat:'Natureza', desc:'Trilhas, vista panorâmica e banho nas águas cristalinas.', longo:'Viva uma experiência inesquecível na maior queda de água de Angola! Desfrute de trilhas guiadas, miradouros incríveis e banho nas águas cristalinas de Calandula. Natureza, aventura e conexão com o essencial. Partida de Luanda às 05:30, almoço típico em Malanje e regresso ao fim do dia.', preco:25000, rating:4.9, rev:98, img:'xp_kal', dur:'1 dia', gmin:2, gmax:12, disp:'Todos os dias', idiomas:'PT, EN', gal:['g1','g2','g3','g4','kalandula'], destaque:1 },
   { titulo:'Imersão na Cultura e Tradições', prov:'Huíla', local:'Lubango, Huíla', cat:'Cultura', desc:'Música, dança, artesanato e história que encantam.', longo:'Uma tarde com grupos de dança tradicional do Lubango, oficina de artesanato e conversa com contadores de histórias. Inclui prova de pratos regionais.', preco:15000, rating:4.8, rev:76, img:'xp_cult', dur:'5 horas', gmin:2, gmax:20, disp:'Qua a Dom', idiomas:'PT, EN, FR', gal:['xp_cult','ev_carnaval','r_sabor','ev_festa'], destaque:1 },
   { titulo:'Sabores de Angola — Tour Gastronómico', prov:'Luanda', local:'Luanda', cat:'Gastronomia', desc:'Descubra os sabores típicos da nossa terra.', longo:'Percurso por mercados e restaurantes de Luanda com degustação de muamba, calulu, mufete e doces tradicionais, guiado por um chef local.', preco:18000, rating:4.7, rev:65, img:'xp_gastro', dur:'4 horas', gmin:2, gmax:10, disp:'Ter a Sáb', idiomas:'PT, EN', gal:['xp_gastro','f_muamba','f_calulu','f_bolinho'], destaque:1 },
   { titulo:'Pôr do Sol na Ilha do Mussulo', prov:'Luanda', local:'Ilha do Mussulo, Luanda', cat:'Natureza', desc:'Passeio de barco e relaxamento nas praias paradisíacas.', longo:'Travessia de barco desde o Embarcadouro, tarde na praia com bebida de boas-vindas e regresso ao pôr do sol.', preco:20000, rating:4.8, rev:54, img:'xp_sol', dur:'5 horas', gmin:2, gmax:15, disp:'Todos os dias', idiomas:'PT, EN', gal:['xp_sol','mussulo','h_resort','ev_kite'], destaque:0 },
@@ -164,6 +164,7 @@ async function semear(dExterno) {
 
     for (const [t, campo, nome, v] of listaTraducoes()) await d.run(`UPDATE ${t} SET i18n = ? WHERE ${campo} = ?`, J(v), nome);
     await require('./dados-aplicar').aplicarDadosV34(d, { desativarExemplos: process.env.SEED_DEMO === '0' });
+    await require('./dados-aplicar').aplicarDadosV35(d);
 
     // As avaliações iniciais já estão contadas no rating: desliga o trigger de médias durante a importação
     await d.run('ALTER TABLE avaliacoes DISABLE TRIGGER trg_avaliacao_media');
@@ -182,7 +183,7 @@ async function semear(dExterno) {
 
     const hist = [
       ['experiencia',6,'City Tour Histórico em Luanda','xp_city','2026-10-18 10:30:00','2026-10-19',2,'pessoa',10000,'Carteira 360','concluida','pago','Experiências'],
-      ['experiencia',1,'Aventura nas Cataratas da Kalandula','xp_kal','2026-10-17 14:20:00','2026-10-25',1,'pessoa',25000,'Carteira 360','concluida','pago','Experiências'],
+      ['experiencia',1,'Aventura nas Quedas de Calandula','xp_kal','2026-10-17 14:20:00','2026-10-25',1,'pessoa',25000,'Carteira 360','concluida','pago','Experiências'],
       ['experiencia',4,'Pôr do Sol na Ilha do Mussulo','xp_sol','2026-10-15 09:15:00','2026-11-02',3,'pessoa',20000,'Multicaixa Express','pendente','pendente','Experiências'],
       ['tradutor',1,'Tradutor Carlos M.','t_carlos.svg','2026-10-14 20:45:00','2026-10-14',2,'hora',5000,'Cartão •••• 4587','concluida','pago','Tradutores'],
     ];
@@ -201,7 +202,7 @@ async function semear(dExterno) {
     // Clientes de demonstração com reservas ao longo do último mês (para o painel ter números)
     const CLIENTES = [['Joana Neto','joana.neto@exemplo.ao'],['Mateus Kiala','mateus.kiala@exemplo.ao'],['Helena Sousa','helena.sousa@exemplo.ao'],['Paulo Domingos','paulo.d@exemplo.ao'],['Inês Tavares','ines.t@exemplo.ao'],['Rui Afonso','rui.afonso@exemplo.ao']];
     const OPC = [
-      ['experiencia',1,'Aventura nas Cataratas da Kalandula','xp_kal',25000,'pessoa','Experiências'],
+      ['experiencia',1,'Aventura nas Quedas de Calandula','xp_kal',25000,'pessoa','Experiências'],
       ['experiencia',3,'Sabores de Angola — Tour Gastronómico','xp_gastro',18000,'pessoa','Experiências'],
       ['experiencia',4,'Pôr do Sol na Ilha do Mussulo','xp_sol',20000,'pessoa','Experiências'],
       ['experiencia',2,'Imersão na Cultura e Tradições','xp_cult',15000,'pessoa','Experiências'],

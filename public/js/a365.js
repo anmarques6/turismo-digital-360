@@ -253,6 +253,7 @@ function abrirPrato(id) {
 /* ---------- acções ---------- */
 document.addEventListener('click', async e => {
   const b = e.target.closest('button,a'); if (!b) return; const d = b.dataset;
+  if (d.mais) { S.f['n_' + d.mais] = (S.f['n_' + d.mais] || 24) + 24; render(); return; }
   if (d.mapaTipo) { M.filtro.has(d.mapaTipo) ? M.filtro.delete(d.mapaTipo) : M.filtro.add(d.mapaTipo); M.sel = null; render(); return; }
   if (d.mapaZoom) { const v = M.vb || [0, 0, W, HH]; const f = +d.mapaZoom; const nw = Math.min(W * 1.2, Math.max(W / 60, v[2] / f)), nh = v[3] * nw / v[2]; M.vb = [v[0] + (v[2] - nw) / 2, v[1] + (v[3] - nh) / 2, nw, nh]; render(); return; }
   if (d.mapaReset !== undefined) { M.vb = null; M.sel = null; M.munSel = null; render(); return; }
