@@ -909,3 +909,10 @@ I18N.dic([
   ['Esconder', 'Hide', 'Masquer', 'Ocultar'], ['Publicar', 'Publish', 'Publier', 'Publicar'], ['Negócios', 'Businesses', 'Entreprises', 'Negocios'],
   ['Área do parceiro: o meu negócio', 'Partner area: my business', 'Espace partenaire : mon entreprise', 'Área de socios: mi negocio'], ['Tenho um negócio: tornar-me parceiro', 'I own a business: become a partner', 'J’ai une entreprise : devenir partenaire', 'Tengo un negocio: hacerme socio'],
 ]);
+I18N.dic([
+  ['É o dono? Este negócio é meu', 'Are you the owner? This business is mine', 'Vous êtes le propriétaire ? Cette entreprise est à moi', '¿Es el dueño? Este negocio es mío'],
+  ['Está a pedir a propriedade da ficha', 'You are claiming the listing', 'Vous revendiquez la fiche', 'Está reclamando la ficha'],
+  ['Confirme ou corrija os dados. A equipa Angola 365º verifica que é o dono (por telefone ou e-mail do estabelecimento) antes de lhe entregar a ficha.', 'Confirm or correct the details. The Angola 365º team checks you are the owner (by the business phone or e-mail) before handing over the listing.', 'Confirmez ou corrigez les données. L’équipe Angola 365º vérifie que vous êtes le propriétaire (par le téléphone ou l’e-mail de l’établissement) avant de vous confier la fiche.', 'Confirme o corrija los datos. El equipo de Angola 365º comprueba que es el dueño (por el teléfono o e-mail del establecimiento) antes de entregarle la ficha.'],
+  ['Pedido de propriedade da ficha', 'Ownership request for the listing', 'Demande de propriété de la fiche', 'Solicitud de propiedad de la ficha'],
+  ['atribuída', 'assigned', 'attribuée', 'asignada'],
+]);

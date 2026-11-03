@@ -49,7 +49,7 @@ const match = (txt, q) => !q || NORMQ(txt).includes(NORMQ(q));
 const NORMQ = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const precoAl = a => a.preco_noite == null ? null : Math.round(a.preco_noite * (100 - (a.oferta_pct || 0)) / 100);
 const hostDe = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
-const btnPedir = (tipo, id, cls = 'btn btn-navy') => `<button class="${cls}" data-pedir="${tipo}:${id}">${ic('chat')} Pedir reserva</button>`;
+const btnPedir = (tipo, id, cls = 'btn btn-navy') => `<button class="${cls}" data-pedir="${tipo}:${id}">${ic('chat')} Pedir reserva</button>` + (['alojamento', 'restaurante'].includes(tipo) && !item(tipo, id)?.negocio_id ? `<button type="button" class="link reclamar" data-reclamar="${tipo}:${id}">${ic('badge')}${I18N.t('É o dono? Este negócio é meu')}</button>` : '');
 const seloFonte = it => it.fonte ? `<a class="meta fonte" href="${esc(it.fonte)}" target="_blank" rel="noopener">${ic('globe')}Fonte: ${esc(hostDe(it.fonte))}</a>` : '';
 
 function chips(key, list, cls = '') {

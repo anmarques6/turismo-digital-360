@@ -69,19 +69,19 @@ function vTipos() {
 }
 function vFormNegocio(n = null) {
   const tipo = n ? n.tipo_negocio : PN.tipo, T = PN.esq.tipos[tipo], R = PN.esq.recursos[T.tabela];
-  const u = S.user;
+  const u = S.user, v = n || PN.pre || {};
   return `<form class="card pn-form section" data-pn-negocio="${n ? n.id : ''}" novalidate>
-   <div class="pn-form-top">${ic(T.icone)}<div><h2>${n ? tr_('Editar negócio') : tr_('2. Dados do negócio')}</h2><p class="meta">${esc(tr_(T.nome))} · ${tr_('aparece em')} <b>${esc(tr_(R.titulo))}</b></p></div>${n ? '' : `<button type="button" class="link" data-pn-voltar>${tr_('Mudar o tipo')}</button>`}</div>
-   <div class="pn-grid">
-    ${pnCampo('n', 'nome', { t: 'text', label: 'Nome do negócio', req: 1 }, n?.nome)}
-    ${pnCampo('n', 'telefone', { t: 'text', label: 'Telefone de contacto', req: 1 }, n?.telefone ?? u.telefone)}
-    ${pnCampo('n', 'email', { t: 'text', label: 'E-mail do negócio' }, n?.email ?? u.email)}
-    ${pnCampo('n', 'site', { t: 'text', label: 'Site ou rede social (https://…)' }, n?.site)}
-    ${pnCampo('n', 'nif', { t: 'text', label: 'NIF (opcional)' }, n?.nif)}
-    ${pnCampo('n', 'descricao', { t: 'textarea', label: 'Apresentação do negócio' }, n?.descricao)}
-    ${pnCampo('n', 'imagem', { t: 'image', label: 'Fotografia principal' }, n?.imagem)}
-    ${pnLocal('n', n || {})}
-    ${!n && T.unico ? `<h3 class="pn-full pn-sub">${ic('wallet')} ${tr_('3. Preços e detalhes')}</h3>${pnCamposProduto(T.tabela, tipo, {}, 'novo')}` : ''}
+   <div class="pn-form-top">${ic(T.icone)}<div><h2>${n ? tr_('Editar negócio') : tr_('2. Dados do negócio')}</h2><p class="meta">${esc(tr_(T.nome))} · ${tr_('aparece em')} <b>${esc(tr_(R.titulo))}</b></p></div>${n || PN.reclamar ? '' : `<button type="button" class="link" data-pn-voltar>${tr_('Mudar o tipo')}</button>`}</div>
+   ${PN.reclamar && !n ? `<p class="aviso-viagem pn-full">${ic('badge')} ${tr_('Está a pedir a propriedade da ficha')} <b>«${esc(PN.reclamar.nome)}»</b>. ${tr_('Confirme ou corrija os dados. A equipa Angola 365º verifica que é o dono (por telefone ou e-mail do estabelecimento) antes de lhe entregar a ficha.')}</p>` : ''}<div class="pn-grid">
+    ${pnCampo('n', 'nome', { t: 'text', label: 'Nome do negócio', req: 1 }, v.nome)}
+    ${pnCampo('n', 'telefone', { t: 'text', label: 'Telefone de contacto', req: 1 }, v.telefone ?? u.telefone)}
+    ${pnCampo('n', 'email', { t: 'text', label: 'E-mail do negócio' }, v.email ?? u.email)}
+    ${pnCampo('n', 'site', { t: 'text', label: 'Site ou rede social (https://…)' }, v.site)}
+    ${pnCampo('n', 'nif', { t: 'text', label: 'NIF (opcional)' }, v.nif)}
+    ${pnCampo('n', 'descricao', { t: 'textarea', label: 'Apresentação do negócio' }, v.descricao)}
+    ${pnCampo('n', 'imagem', { t: 'image', label: 'Fotografia principal' }, v.imagem)}
+    ${pnLocal('n', v)}
+    ${!n && T.unico ? `<h3 class="pn-full pn-sub">${ic('wallet')} ${tr_('3. Preços e detalhes')}</h3>${pnCamposProduto(T.tabela, tipo, PN.pre?.produto || {}, 'novo')}` : ''}
    </div>
    <p class="erro-box" data-pn-err hidden></p>
    <div class="pn-acoes"><button class="btn btn-red" type="submit">${ic('check')} ${n ? tr_('Guardar alterações') : tr_('Enviar para aprovação')}</button>${n || PN.painel?.negocios.length ? `<button type="button" class="btn btn-ghost" data-pn-cancelar>${tr_('Cancelar')}</button>` : ''}</div>
@@ -94,6 +94,7 @@ function vPainel() {
   ${P.negocios.map(n => { const T = PN.esq.tipos[n.tipo_negocio] || {}, [el, ec] = PN_EST[n.estado], Rr = PN.esq.recursos[T.tabela] || {}; const prods = P.produtos.filter(p => p.negocio_id === n.id);
     return `<section class="card pn-neg section"><div class="pn-neg-top">${n.imagem ? `<img src="${esc(n.imagem)}" alt="">` : `<span class="pn-neg-ic">${ic(T.icone || 'brief')}</span>`}<div style="flex:1;min-width:0"><span class="pill ${ec}">${tr_(el)}</span><h2>${esc(n.nome)}</h2><p class="meta">${esc(tr_(T.nome || n.tipo_negocio))} · ${ic('pin')}${esc([n.endereco, n.municipio, n.provincia].filter(Boolean).join(', '))}</p><p class="meta">${ic('phone')}${esc(n.telefone || '')}${n.email ? ' · ' + esc(n.email) : ''}</p></div>
      <div class="pn-neg-bt"><button class="btn btn-ghost" data-pn-editar-neg="${n.id}">${ic('edit')} ${tr_('Editar negócio')}</button>${n.estado !== 'suspenso' ? `<button class="btn btn-navy" data-pn-novo-prod="${n.id}">${ic('plus')} ${tr_('Adicionar')} ${esc(tr_(Rr.singular || 'produto').toLowerCase())}</button>` : ''}</div></div>
+     ${n.reclama_nome ? `<p class="meta">${ic('badge')} ${tr_('Pedido de propriedade da ficha')} <b>«${esc(n.reclama_nome)}»</b>${n.estado === 'aprovado' ? ' · ' + tr_('atribuída') : ''}</p>` : ''}
      ${n.estado === 'em_revisao' ? `<p class="aviso-viagem">${ic('clock')} ${tr_('Em revisão pela equipa Angola 365º. Os produtos ficam visíveis no site assim que o negócio for aprovado.')}</p>` : ''}
      ${n.nota_admin && n.estado !== 'aprovado' ? `<p class="erro-box">${ic('chat')} <b>${tr_('Mensagem da administração:')}</b> ${esc(n.nota_admin)}${n.estado === 'rejeitado' ? ' — ' + tr_('corrija e guarde o negócio para voltar à revisão.') : ''}</p>` : ''}
      <h3 class="pn-sub">${esc(tr_(Rr.titulo || 'Produtos'))} <small class="meta">(${prods.length})</small></h3>
@@ -156,9 +157,19 @@ antesDe = async r => { if (r === 'negocio') { if (!PN.esq) PN.esq = await API.ge
 /* ---------- acções ---------- */
 document.addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+  if (d.reclamar) {
+    const [tipo, id] = d.reclamar.split(':'); const it = item(tipo, id); if (!it) return;
+    const tabela = tipo === 'alojamento' ? 'alojamentos' : 'restaurantes';
+    if (!PN.esq) PN.esq = await API.get('/api/parceiro/esquema');
+    PN.tipo = tabela === 'restaurantes' ? 'restaurante' : Object.keys(PN.esq.tipos).find(k => PN.esq.tipos[k].fixo?.tipo === it.tipo) || 'hotel';
+    PN.reclamar = { tabela, id: it.id, nome: it.nome };
+    PN.pre = { nome: it.nome, telefone: it.telefone, site: it.site, endereco: it.endereco || it.local, bairro: it.bairro, latitude: it.latitude, longitude: it.longitude, municipio: it.municipio, provincia: it.provincia, descricao: it.descricao,
+      produto: { quartos: it.quartos, comodidades: it.comodidades, especialidade: it.especialidade, nivel_preco: it.nivel_preco, horario: it.horario, descricao: it.descricao, etiqueta: it.etiqueta } };
+    PN.novo = true; PN.passo = 'form'; PN.editarNeg = null; location.hash = 'negocio'; scrollTo(0, 0); return;
+  }
   if (d.pnTipo) { PN.tipo = d.pnTipo; PN.passo = 'form'; render(); scrollTo(0, 0); return; }
   if (d.pnVoltar !== undefined) { PN.passo = 'tipo'; render(); return; }
-  if (d.pnCancelar !== undefined) { PN.novo = false; PN.editarNeg = null; PN.passo = 'tipo'; render(); return; }
+  if (d.pnCancelar !== undefined) { PN.reclamar = null; PN.pre = null; PN.novo = false; PN.editarNeg = null; PN.passo = 'tipo'; render(); return; }
   if (d.pnOutro !== undefined) { PN.novo = true; PN.passo = 'tipo'; render(); scrollTo(0, 0); return; }
   if (d.pnEditarNeg) { PN.editarNeg = +d.pnEditarNeg; render(); scrollTo(0, 0); return; }
   if (d.pnNovoProd) return abrirProduto(+d.pnNovoProd);
@@ -199,7 +210,7 @@ document.addEventListener('submit', async e => {
     try {
       const negocio = { ...pnLer(f, 'n'), tipo_negocio: PN.tipo };
       if (f.dataset.pnNegocio) { await API.put('/api/parceiro/negocios/' + f.dataset.pnNegocio, { negocio }); PN.editarNeg = null; toast(tr_('Negócio actualizado.')); }
-      else { await API.post('/api/parceiro/negocios', { negocio, produto: pnLer(f, 'p') }); PN.novo = false; PN.passo = 'tipo'; PN.tipo = null; S.user.papel = S.user.papel === 'cliente' ? 'parceiro' : S.user.papel; toast(tr_('Negócio enviado para aprovação.')); carregarNotifs(); }
+      else { await API.post('/api/parceiro/negocios', { negocio, produto: pnLer(f, 'p'), ...(PN.reclamar ? { reclamar: { tabela: PN.reclamar.tabela, id: PN.reclamar.id } } : {}) }); PN.reclamar = null; PN.pre = null; PN.novo = false; PN.passo = 'tipo'; PN.tipo = null; S.user.papel = S.user.papel === 'cliente' ? 'parceiro' : S.user.papel; toast(tr_('Negócio enviado para aprovação.')); carregarNotifs(); }
       render(); scrollTo(0, 0);
     } catch (er) { err.textContent = er.message; err.hidden = false; err.scrollIntoView({ block: 'center', behavior: 'smooth' }); } finally { bt.disabled = false; }
     return;

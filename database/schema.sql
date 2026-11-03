@@ -651,3 +651,8 @@ ALTER TABLE viaturas     ADD COLUMN IF NOT EXISTS negocio_id INTEGER REFERENCES 
 ALTER TABLE eventos      ADD COLUMN IF NOT EXISTS negocio_id INTEGER REFERENCES negocios(id) ON DELETE SET NULL;
 ALTER TABLE tradutores   ADD COLUMN IF NOT EXISTS negocio_id INTEGER REFERENCES negocios(id) ON DELETE SET NULL;
 ALTER TABLE imagens      ADD COLUMN IF NOT EXISTS utilizador_id INTEGER REFERENCES utilizadores(id) ON DELETE SET NULL;
+-- v3.9 · «Este negócio é meu»: o dono reclama uma ficha que já existe (ex.: importada do OpenStreetMap)
+ALTER TABLE negocios ADD COLUMN IF NOT EXISTS reclama_tabela TEXT;
+ALTER TABLE negocios ADD COLUMN IF NOT EXISTS reclama_id INTEGER;
+ALTER TABLE negocios ADD COLUMN IF NOT EXISTS produto_proposto TEXT;
+CREATE INDEX IF NOT EXISTS idx_negocios_reclama ON negocios(reclama_tabela, reclama_id);

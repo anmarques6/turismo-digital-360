@@ -73,7 +73,7 @@ async function meuProduto(req, t, id) {
 }
 
 // Grava um produto do parceiro no catálogo do seu tipo de negócio
-async function gravarProduto(d, n, t, b, id = null) {
+async function gravarProduto(d, n, t, b, id = null, { simular = false } = {}) {
   const entrada = {}; for (const k of CAMPOS_PARCEIRO[t]) if (b[k] !== undefined) entrada[k] = b[k];
   const fx = fixos(n, t, entrada);
   const dados = { ...entrada, ...fx };
@@ -82,7 +82,8 @@ async function gravarProduto(d, n, t, b, id = null) {
   else if (t === 'alojamentos' && !entrada.tipo) dados.tipo = TIPOS_NEGOCIO[n.tipo_negocio].fixo?.tipo;
   if (!dados.imagem) erro(400, 'Carregue pelo menos uma fotografia.');
   const so = [...new Set([...CAMPOS_PARCEIRO[t], ...Object.keys(fx), 'tipo'])].filter(k => k in RECURSOS[t].campos);
-  const v = await ctx.validar(t, dados, !id, so, OBRIG_PARCEIRO[t] || []);
+  const v = await ctx.validar(t, dados, !id || simular, so, OBRIG_PARCEIRO[t] || []);
+  if (simular) return v;
   if (t === 'eventos' && v.data && v.data < hojeAO()) erro(400, 'A data do evento já passou.');
   // aceita reservas online quando tem preço; sem preço fica «sob consulta»
   if ('parceiro' in RECURSOS[t].campos) v.parceiro = (t === 'alojamentos' ? v.preco_noite : t === 'restaurantes' ? v.preco_medio : v.preco_dia) != null ? 1 : 0;
@@ -90,6 +91,16 @@ async function gravarProduto(d, n, t, b, id = null) {
   const ks = Object.keys(v);
   if (id) { if (ks.length) await d.run(`UPDATE ${t} SET ${ks.map(k => k + ' = ?').join(', ')} WHERE id = ?`, ...ks.map(k => v[k]), id); return d.get(`SELECT * FROM ${t} WHERE id = ?`, id); }
   return d.get(`INSERT INTO ${t} (${ks.join(',')}) VALUES (${ks.map(() => '?').join(',')}) RETURNING *`, ...ks.map(k => v[k]));
+}
+// «Este negócio é meu»: fichas que podem ser reclamadas e o tipo de negócio que lhes corresponde
+const RECLAMAVEIS = ['alojamentos', 'restaurantes'];
+const tipoParaFicha = (t, it) => t === 'restaurantes' ? 'restaurante' : Object.keys(TIPOS_NEGOCIO).find(k => TIPOS_NEGOCIO[k].fixo?.tipo === it.tipo) || 'hotel';
+async function fichaReclamavel(t, id) {
+  if (!RECLAMAVEIS.includes(t)) erro(400, 'Só é possível reclamar alojamentos e restaurantes.');
+  const it = await get(`SELECT * FROM ${t} WHERE id = ?`, Number(id));
+  if (!it || !it.ativo) erro(404, 'Ficha não encontrada.');
+  if (it.negocio_id) erro(409, 'Esta ficha já pertence a um parceiro. Se é o dono, contacte o suporte.');
+  return it;
 }
 const hojeAO = () => new Date(Date.now() + 36e5).toISOString().slice(0, 10);
 
@@ -128,6 +139,7 @@ function registar(c) {
     await auth(req);
     const negocios = await all('SELECT n.*, p.nome AS provincia FROM negocios n LEFT JOIN provincias p ON p.id = n.provincia_id WHERE n.utilizador_id = ? ORDER BY n.id', req.user.id);
     const produtos = await produtosDe(negocios.map(n => n.id));
+    for (const n of negocios) if (n.reclama_id && RECLAMAVEIS.includes(n.reclama_tabela)) n.reclama_nome = (await get(`SELECT nome FROM ${n.reclama_tabela} WHERE id = ?`, n.reclama_id))?.nome;
     const reservas = negocios.length ? await all(`SELECT r.id, r.codigo, r.tipo, r.item_id, r.item_nome, r.imagem, r.data_inicio, r.data_fim, r.quantidade, r.unidade, r.total, r.estado, r.metodo_pagamento, r.criado_em, u.nome AS cliente_nome, u.telefone AS cliente_telefone, u.email AS cliente_email
       FROM reservas r JOIN utilizadores u ON u.id = r.utilizador_id WHERE ${condReservas()} ORDER BY r.criado_em DESC, r.id DESC LIMIT 300`, ...TABELAS.map(() => req.user.id)) : [];
     const ativas = reservas.filter(r => ['confirmada', 'concluida'].includes(r.estado));
@@ -138,18 +150,27 @@ function registar(c) {
   api.post('/api/parceiro/negocios', corpo, async req => {
     await auth(req);
     if ((await get('SELECT COUNT(*)::int AS n FROM negocios WHERE utilizador_id = ?', req.user.id)).n >= MAX_NEGOCIOS) erro(400, `Pode registar até ${MAX_NEGOCIOS} negócios por conta.`);
+    const rq = req.dados.reclamar;
+    let ficha = null;
+    if (rq) { ficha = await fichaReclamavel(str(rq.tabela, 20), rq.id); req.dados.negocio = { ...(req.dados.negocio || {}), tipo_negocio: tipoParaFicha(rq.tabela, ficha) }; if (await get(`SELECT 1 AS x FROM negocios WHERE utilizador_id = ? AND reclama_tabela = ? AND reclama_id = ? AND estado = 'em_revisao'`, req.user.id, rq.tabela, ficha.id)) erro(409, 'Já enviou um pedido para esta ficha. Aguarde a revisão.'); }
     const o = await validarNegocio(req.dados.negocio || {});
     const def = TIPOS_NEGOCIO[o.tipo_negocio];
+    if (ficha) {
+      // valida já os preços e detalhes propostos; só são aplicados à ficha quando a administração aprovar
+      const prov = { [nomeCampo(rq.tabela)]: o.nome, descricao: o.descricao || ficha.descricao, imagem: o.imagem || ficha.imagem, ...(req.dados.produto || {}) };
+      await gravarProduto(null, { ...o, provincia: null, estado: 'em_revisao' }, rq.tabela, prov, null, { simular: true });
+      Object.assign(o, { reclama_tabela: rq.tabela, reclama_id: ficha.id, produto_proposto: JSON.stringify(prov) });
+    }
     o.utilizador_id = req.user.id;
     const r = await tx(async d => {
       const ks = Object.keys(o);
       const n0 = await d.get(`INSERT INTO negocios (${ks.join(',')}) VALUES (${ks.map(() => '?').join(',')}) RETURNING id`, ...ks.map(k => o[k]));
       const n = await d.get('SELECT n.*, p.nome AS provincia FROM negocios n LEFT JOIN provincias p ON p.id = n.provincia_id WHERE n.id = ?', n0.id);
       let produto = null;
-      if (def.unico) produto = await gravarProduto(d, n, def.tabela, { [nomeCampo(def.tabela)]: o.nome, descricao: o.descricao, ...(req.dados.produto || {}) });
+      if (def.unico && !ficha) produto = await gravarProduto(d, n, def.tabela, { [nomeCampo(def.tabela)]: o.nome, descricao: o.descricao, ...(req.dados.produto || {}) });
       if (req.user.papel === 'cliente') await d.run(`UPDATE utilizadores SET papel = 'parceiro' WHERE id = ?`, req.user.id);
       await ctx.notificar(d, req.user.id, 'Negócio recebido', `«${o.nome}» está em revisão. Avisamos assim que for aprovado e publicado.`, 'clock', 'negocio');
-      for (const a of await admins()) await ctx.notificar(d, a.id, 'Novo parceiro para aprovar', `${o.nome} · ${def.nome} · ${o.municipio}`, 'badge', null);
+      for (const a of await admins()) await ctx.notificar(d, a.id, ficha ? 'Pedido de propriedade de ficha' : 'Novo parceiro para aprovar', `${o.nome} · ${def.nome} · ${o.municipio}${ficha ? ' · reclama «' + ficha.nome + '»' : ''}`, 'badge', null);
       return { negocio: n, produto };
     });
     await auditar(req, 'registar_negocio', 'negocios', r.negocio.id, o.nome);
@@ -233,6 +254,7 @@ function registar(c) {
     await admin(req);
     const L = await all(`SELECT n.*, p.nome AS provincia, u.nome AS dono_nome, u.email AS dono_email, u.telefone AS dono_telefone FROM negocios n JOIN utilizadores u ON u.id = n.utilizador_id LEFT JOIN provincias p ON p.id = n.provincia_id ORDER BY (n.estado = 'em_revisao') DESC, n.criado_em DESC`);
     const P = await produtosDe(L.map(n => n.id));
+    for (const n of L) if (n.reclama_id && RECLAMAVEIS.includes(n.reclama_tabela)) n.reclama = await get(`SELECT id, nome, local, endereco, telefone, site, fonte, osm_id, imagem, latitude, longitude FROM ${n.reclama_tabela} WHERE id = ?`, n.reclama_id);
     return L.map(n => ({ ...n, tipo_nome: TIPOS_NEGOCIO[n.tipo_negocio]?.nome || n.tipo_negocio, produtos: P.filter(p => p.negocio_id === n.id).map(p => ({ id: p.id, tabela: p._tabela, nome: p._nome, ativo: p.ativo, imagem: p.imagem })) }));
   });
   api.patch('/api/admin/negocios/:id', corpo, async req => {
@@ -243,6 +265,19 @@ function registar(c) {
     if (estado === 'rejeitado' && !nota) erro(400, 'Explique ao parceiro o que tem de corrigir.');
     await tx(async d => {
       await d.run('UPDATE negocios SET estado = ?, nota_admin = ?, atualizado_em = ? WHERE id = ?', estado, nota, ctx.agoraSQL(), n.id);
+      // aprovação de um pedido «Este negócio é meu»: a ficha existente passa a ser do parceiro, com os preços propostos
+      if (estado === 'aprovado' && n.reclama_id && !(await d.get(`SELECT id FROM ${tabelaParceiro(n.reclama_tabela)} WHERE negocio_id = ? LIMIT 1`, n.id))) {
+        const f = await d.get(`SELECT * FROM ${n.reclama_tabela} WHERE id = ? FOR UPDATE`, n.reclama_id);
+        if (!f) erro(404, 'A ficha reclamada já não existe.');
+        if (f.negocio_id) erro(409, 'Esta ficha já foi atribuída a outro parceiro.');
+        const prop = JSON.parse(n.produto_proposto || '{}');
+        await gravarProduto(d, { ...n, estado: 'aprovado' }, n.reclama_tabela, { ...prop, imagem: prop.imagem || f.imagem }, f.id);
+        await d.run(`UPDATE ${n.reclama_tabela} SET negocio_id = ?, imagem_ilustrativa = CASE WHEN ? THEN 0 ELSE imagem_ilustrativa END WHERE id = ?`, n.id, prop.imagem && prop.imagem !== f.imagem ? 1 : 0, f.id);
+        for (const o2 of await d.all(`SELECT id, utilizador_id, nome FROM negocios WHERE reclama_tabela = ? AND reclama_id = ? AND id <> ? AND estado = 'em_revisao'`, n.reclama_tabela, n.reclama_id, n.id)) {
+          await d.run(`UPDATE negocios SET estado = 'rejeitado', nota_admin = ? WHERE id = ?`, 'A ficha foi atribuída a outro pedido, depois de confirmada a propriedade.', o2.id);
+          await ctx.notificar(d, o2.utilizador_id, 'Pedido não aprovado', `«${o2.nome}»: a ficha foi atribuída a outro pedido. Contacte o suporte se é o dono.`, 'x', 'negocio');
+        }
+      }
       for (const t of TABELAS) {
         if (estado === 'aprovado') await d.run(`UPDATE ${t} SET ativo = 1${temGeo(t) ? `, coord_estado = CASE WHEN latitude IS NOT NULL THEN 'verificada' ELSE coord_estado END, coord_fonte = CASE WHEN latitude IS NOT NULL THEN 'Indicada pelo parceiro e aprovada pela administração' ELSE coord_fonte END` : ''} WHERE negocio_id = ?`, n.id);
         else await d.run(`UPDATE ${t} SET ativo = 0 WHERE negocio_id = ?`, n.id);

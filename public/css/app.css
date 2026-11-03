@@ -699,3 +699,5 @@ span.ilustr{pointer-events:none}
 .pn-coords .field{min-width:0}
 .pn-form .field input,.pn-form .field select,.pn-form .field textarea,.pn-modal .field input,.pn-modal .field select,.pn-modal .field textarea{width:100%;min-width:0;box-sizing:border-box}
 @media (max-width:640px){.pn-geo-acoes>.btn-navy{width:100%;justify-content:center}.pn-ou{display:none}}
+.link.reclamar{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;margin-top:6px;flex-basis:100%;justify-content:flex-end}
+.link.reclamar .i{width:15px;height:15px}

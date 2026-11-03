@@ -388,3 +388,26 @@ test('L2 rent-a-car e organizador de eventos: vários produtos com empresa/organ
   const p = (await req('GET', '/api/parceiro/painel', null, op)).j; assert.equal(p.negocios.length, 2); assert.equal(p.produtos.length, 2);
   assert.equal((await req('DELETE', `/api/parceiro/produtos/viaturas/${v.j.id}`, null, op)).j.apagado, true);
 });
+
+test('L3 «Este negócio é meu»: o dono reclama uma ficha existente; só passa a ser dele depois de aprovado', async () => {
+  const al = (await req('GET', '/api/alojamentos')).j.find(a => a.parceiro === 0 && !a.negocio_id && a.latitude != null);
+  assert.ok(al, 'há fichas de alojamento sem dono');
+  const op = (await req('POST', '/api/auth/registar', { nome: 'Dono Real', email: `dono${Date.now()}@exemplo.ao`, senha: 'segredo12' })).j.token;
+  const op2 = (await req('POST', '/api/auth/registar', { nome: 'Outro Dono', email: `dono2${Date.now()}@exemplo.ao`, senha: 'segredo12' })).j.token;
+  const neg = { nome: al.nome, telefone: '923 000 222', endereco: al.endereco || al.local, latitude: al.latitude, longitude: al.longitude };
+  assert.equal((await req('POST', '/api/parceiro/negocios', { negocio: neg, produto: {}, reclamar: { tabela: 'alojamentos', id: al.id } }, op)).status, 400, 'preço obrigatório');
+  assert.equal((await req('POST', '/api/parceiro/negocios', { negocio: neg, produto: { preco_noite: 1 }, reclamar: { tabela: 'utilizadores', id: 1 } }, op)).status, 400);
+  const r = await req('POST', '/api/parceiro/negocios', { negocio: neg, produto: { preco_noite: 42000 }, reclamar: { tabela: 'alojamentos', id: al.id } }, op);
+  assert.equal(r.status, 200, JSON.stringify(r.j)); assert.equal(r.j.produto, null, 'não cria ficha duplicada');
+  const r2 = (await req('POST', '/api/parceiro/negocios', { negocio: neg, produto: { preco_noite: 30000 }, reclamar: { tabela: 'alojamentos', id: al.id } }, op2)).j;
+  let ficha = (await req('GET', '/api/alojamentos')).j.find(a => a.id === al.id);
+  assert.equal(ficha.parceiro, 0, 'antes da aprovação, a ficha não muda'); assert.equal(ficha.negocio_id, null);
+  const adm = (await req('GET', '/api/admin/negocios', null, admin)).j.find(n => n.id === r.j.negocio.id); assert.equal(adm.reclama.id, al.id);
+  assert.equal((await req('PATCH', `/api/admin/negocios/${r.j.negocio.id}`, { estado: 'aprovado' }, admin)).status, 200);
+  ficha = (await req('GET', '/api/alojamentos')).j.find(a => a.id === al.id);
+  assert.equal(ficha.negocio_id, r.j.negocio.id); assert.equal(ficha.parceiro, 1); assert.equal(ficha.preco_noite, 42000); assert.equal(ficha.telefone, '923 000 222');
+  const p = (await req('GET', '/api/parceiro/painel', null, op)).j; assert.equal(p.produtos.length, 1); assert.equal(p.produtos[0].id, al.id);
+  const outro2 = (await req('GET', '/api/parceiro/painel', null, op2)).j.negocios[0];
+  assert.equal(outro2.id, r2.negocio.id); assert.equal(outro2.estado, 'rejeitado', 'o outro pedido é recusado automaticamente');
+  assert.equal((await req('POST', '/api/parceiro/negocios', { negocio: neg, produto: { preco_noite: 1 }, reclamar: { tabela: 'alojamentos', id: al.id } }, op2)).status, 409, 'já tem dono');
+});

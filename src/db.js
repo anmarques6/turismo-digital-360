@@ -51,7 +51,7 @@ let pronta = null;
 function garantirBD() {
   if (!pronta) pronta = (async () => {
     // o índice destinos_osm_id é o objecto mais recente (v3.5): se faltar, a base de dados é actualizada
-    const t = await db.get(`SELECT to_regclass('public.imagens') AS ok, to_regclass('public.utilizadores') AS u, (SELECT to_regclass('public.destinos_osm_id') IS NOT NULL AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'destinos' AND column_name = 'imagem_fonte') AND to_regclass('public.push_subscricoes') IS NOT NULL AND to_regclass('public.idx_negocios_utilizador') IS NOT NULL) AS v`);
+    const t = await db.get(`SELECT to_regclass('public.imagens') AS ok, to_regclass('public.utilizadores') AS u, (SELECT to_regclass('public.destinos_osm_id') IS NOT NULL AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'destinos' AND column_name = 'imagem_fonte') AND to_regclass('public.push_subscricoes') IS NOT NULL AND to_regclass('public.idx_negocios_reclama') IS NOT NULL) AS v`);
     if (t.ok && t.u && t.v && (await db.get('SELECT EXISTS (SELECT 1 FROM utilizadores) AS e')).e) return;
     // Tudo numa só transacção (compatível com o pooler PgBouncer da Neon); o bloqueio
     // impede que dois pedidos em simultâneo criem a base de dados duas vezes.
