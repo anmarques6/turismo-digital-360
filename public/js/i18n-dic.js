@@ -19,6 +19,7 @@ I18N.dic([
   ['Favoritos', 'Favourites', 'Favoris', 'Favoritos'],
   ['Perfil', 'Profile', 'Profil', 'Perfil'],
   ['Notificações', 'Notifications', 'Notifications', 'Notificaciones'],
+  ['Instalar app Android', 'Install Android app', "Installer l'app Android", 'Instalar app Android'],
   ['Saldo na carteira', 'Wallet balance', 'Solde du portefeuille', 'Saldo en la cartera'],
   ['Uma solução', 'A solution by', 'Une solution', 'Una solución de'],
   ['Administração', 'Administration', 'Administration', 'Administración'],

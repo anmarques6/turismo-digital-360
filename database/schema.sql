@@ -609,3 +609,13 @@ CREATE TABLE IF NOT EXISTS push_subscricoes (
   criado_em      TEXT    NOT NULL DEFAULT agora()
 );
 CREATE INDEX IF NOT EXISTS idx_push_utilizador ON push_subscricoes(utilizador_id);
+
+-- v3.7 · Ficheiros da aplicação Android (APK para instalar, AAB para a Google Play)
+CREATE TABLE IF NOT EXISTS ficheiros_app (
+  nome      TEXT PRIMARY KEY,
+  mime      TEXT NOT NULL,
+  versao    TEXT,
+  dados     BYTEA NOT NULL,
+  sha256    TEXT,
+  criado_em TEXT NOT NULL DEFAULT agora()
+);

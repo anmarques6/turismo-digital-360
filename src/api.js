@@ -285,6 +285,16 @@ api.get('/api/imagens/:id', async (req, res) => {
   res.end(im.dados);
 });
 
+// Aplicação Android (APK/AAB) guardada na base de dados — só ficheiros públicos da tabela ficheiros_app
+api.get('/api/app/:nome', async (req, res) => {
+  const nome = String(req.params.nome || '');
+  if (!/^angola365\.(apk|aab)$/.test(nome)) erro(404, 'Ficheiro não encontrado.');
+  const f = await get('SELECT mime, dados, sha256 FROM ficheiros_app WHERE nome = ?', nome);
+  if (!f) erro(404, 'Ficheiro não encontrado.');
+  res.writeHead(200, { 'Content-Type': f.mime, 'Content-Length': f.dados.length, 'Content-Disposition': `attachment; filename="${nome}"`, 'Cache-Control': 'no-cache', ...(f.sha256 ? { 'X-Checksum-Sha256': f.sha256 } : {}) });
+  res.end(f.dados);
+});
+
 api.get('/api/avaliacoes/:tipo/:id', req => all('SELECT autor_nome, autor_cidade, nota, comentario, criado_em FROM avaliacoes WHERE tipo = ? AND item_id = ? AND aprovada = 1 ORDER BY criado_em DESC LIMIT 30', req.params.tipo, Number(req.params.id)));
 api.post('/api/avaliacoes', corpo, async req => {
   await auth(req); const b = req.dados;

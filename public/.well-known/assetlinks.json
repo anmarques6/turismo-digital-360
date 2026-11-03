@@ -1,0 +1,5 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": { "namespace": "android_app", "package_name": "ao.angola365.app",
+    "sha256_cert_fingerprints": ["0D:DD:C8:E2:8B:0D:00:83:27:F3:2B:DD:09:68:7A:5D:A3:15:4D:E7:B3:BE:30:55:06:5B:BC:D4:C3:08:8B:B5"] }
+}]
