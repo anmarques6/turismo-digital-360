@@ -16,20 +16,62 @@ const guardarPos = () => { try { sessionStorage.setItem('a365_pos', JSON.stringi
 // Pedir táxi na Yango (formato oficial de ligação da Yango: abre a app; sem app abre a página de pedido da Yango)
 const yangoURL = (lat, lon) => { const p = S.pos; const ini = p ? `start-lat=${p.lat}&start-lon=${p.lon}&` : ''; const fb = encodeURIComponent(`https://yango.com/en_int/order/?${p ? `gfrom=${p.lon},${p.lat}&` : ''}gto=${lon},${lat}&ref=angola365`); return `https://yango.go.link/route?${ini}end-lat=${lat}&end-lon=${lon}&ref=angola365&adj_t=vokme8e_nd9s9z9&lang=pt&adj_deeplink_js=1&adj_fallback=${fb}`; };
 const navURL = (lat, lon) => ({ yango: yangoURL(lat, lon), google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, waze: `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`, osm: `https://www.openstreetmap.org/directions?to=${lat},${lon}` });
+// Botões «Como chegar» e «Chamar táxi»: abrem uma escolha de aplicações
+const dadosLugar = (lat, lon, nome, end) => `data-lat="${lat}" data-lon="${lon}" data-nome="${esc(nome || '')}" data-end="${esc(end || '')}"`;
+const botoesIr = (lat, lon, nome, end) => `<button type="button" class="btn-ir" data-mapas ${dadosLugar(lat, lon, nome, end)}>${ic('map')}Como chegar</button><button type="button" class="btn-taxi" data-taxi ${dadosLugar(lat, lon, nome, end)}>${ic('car')}Chamar táxi</button>`;
 function navLinks(it, compacto) {
   const lat = it.latitude ?? it.lat, lon = it.longitude ?? it.lon;
   if (lat == null || lon == null) return compacto ? '' : `<span class="meta coord-falta">${ic('pin')}Localização exacta por confirmar</span>`;
-  const u = navURL(lat, lon); const dist = S.pos ? distKm(S.pos.lat, S.pos.lon, lat, lon) : null;
-  return `<div class="nav-links">${dist != null ? `<span class="meta">${ic('compass')}${fmtKm(dist)} em linha recta</span>` : ''}${coordSelo(it)}
-   <a class="yango" href="${u.yango}" target="_blank" rel="noopener">${ic('car')}Chamar táxi (Yango)</a><a href="${u.google}" target="_blank" rel="noopener">${ic('map')}Google Maps</a><a href="${u.waze}" target="_blank" rel="noopener">${ic('car')}Waze</a><a href="${u.osm}" target="_blank" rel="noopener">${ic('globe')}OpenStreetMap</a>
-   <button type="button" data-mapa-foco="${lat},${lon}">${ic('pin')}Ver no mapa</button></div>`;
+  const dist = S.pos ? distKm(S.pos.lat, S.pos.lon, lat, lon) : null; const nome = it.nome || it.titulo || ''; const end = [it.endereco, it.municipio, it.provincia].filter(Boolean).join(', ');
+  return `<div class="nav-links">${dist != null ? `<span class="meta">${ic('compass')}${fmtKm(dist)} em linha recta</span>` : ''}${coordSelo(it, lat, lon)}
+   ${botoesIr(lat, lon, nome, end)}<button type="button" data-mapa-foco="${lat},${lon}">${ic('pin')}Ver no mapa</button></div>`;
 }
-function coordSelo(it) {
+function coordSelo(it, lat, lon) {
   const e = it.coord_estado; if (!e) return '';
-  const tip = e === 'verificada' ? 'Coordenadas confirmadas no OpenStreetMap' : 'Coordenadas aproximadas: confirme no local';
-  const f = it.coord_fonte ? `<a href="${esc(it.coord_fonte)}" target="_blank" rel="noopener" title="${tip}" class="pill ${e === 'verificada' ? 'p-green' : 'p-orange'}">${e === 'verificada' ? 'Localização verificada' : 'Localização aproximada'}</a>` : `<span class="pill ${e === 'verificada' ? 'p-green' : 'p-orange'}" title="${tip}">${e === 'verificada' ? 'Localização verificada' : 'Localização aproximada'}</span>`;
-  return f + (it.verificado_em ? `<span class="meta">Verificado a ${dfmt(it.verificado_em)}</span>` : '');
+  const tip = e === 'verificada' ? 'Coordenadas confirmadas no OpenStreetMap — toque para escolher a aplicação de mapas' : 'Coordenadas aproximadas: confirme no local — toque para escolher a aplicação de mapas';
+  return `<button type="button" class="pill ${e === 'verificada' ? 'p-green' : 'p-orange'} selo-coord" title="${tip}" data-mapas ${dadosLugar(lat ?? it.latitude ?? it.lat, lon ?? it.longitude ?? it.lon, it.nome || it.titulo, [it.endereco, it.municipio, it.provincia].filter(Boolean).join(', '))} data-coord-fonte="${esc(it.coord_fonte || '')}">${ic('pin')}${e === 'verificada' ? 'Localização verificada' : 'Localização aproximada'}</button>` + (it.verificado_em ? `<span class="meta">Verificado a ${dfmt(it.verificado_em)}</span>` : '');
 }
+// Aplicações de mapas
+function abrirMapas(d) {
+  const { lat, lon, nome, end } = d; const q = encodeURIComponent(nome || `${lat},${lon}`);
+  const apps = [
+    ['Google Maps', 'map', `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`],
+    ['Waze', 'car', `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`],
+    ['Apple Mapas', 'pin', `https://maps.apple.com/?daddr=${lat},${lon}&q=${q}`],
+    ['OpenStreetMap', 'globe', `https://www.openstreetmap.org/directions?to=${lat},${lon}`],
+    ['Outra app do telemóvel', 'phone', `geo:${lat},${lon}?q=${lat},${lon}(${q})`],
+  ];
+  openModal(`<div class="modal escolha">${modalHead(I18N.t('Como chegar'))}<p class="meta"><b>${esc(nome || '')}</b>${end ? '<br>' + esc(end) : ''}<br><span class="num">${Number(lat).toFixed(5)}, ${Number(lon).toFixed(5)}</span></p>
+   <div class="escolha-grid">${apps.map(([n, i, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${ic(i)}<span>${n}</span></a>`).join('')}
+   <button type="button" data-copiar-coord="${lat}, ${lon}">${ic('check')}<span>${I18N.t('Copiar coordenadas')}</span></button></div>
+   ${d.coordFonte ? `<p class="meta" style="margin-top:10px"><a class="fonte" href="${esc(d.coordFonte.split(' ')[0])}" target="_blank" rel="noopener">${ic('globe')}${I18N.t('Ver a origem da localização')}</a></p>` : ''}</div>`);
+}
+// Aplicações de táxi que operam em Angola
+function abrirTaxi(d) {
+  const { lat, lon, nome, end } = d; const destino = [nome, end].filter(Boolean).join(', ') || `${lat}, ${lon}`;
+  const android = /Android/i.test(navigator.userAgent);
+  const intent = (pkg, web) => `intent://#Intent;package=${pkg};S.browser_fallback_url=${encodeURIComponent(web)};end`;
+  const apps = [
+    { n: 'Yango', cor: '#FFD400', u: yangoURL(lat, lon), destino: true },
+    { n: 'Heetch', cor: '#FF2A6E', u: android ? intent('com.heetch', 'https://www.heetch.com/') : 'https://apps.apple.com/app/id693137280' },
+    { n: 'Bolt', cor: '#34D186', u: 'https://bolt.eu/' },
+    { n: 'inDrive', cor: '#C1F11D', u: android ? 'https://indrive.com/' : 'https://apps.apple.com/app/id780125801' },
+  ];
+  openModal(`<div class="modal escolha">${modalHead(I18N.t('Chamar táxi'))}<p class="meta">${I18N.t('Destino')}: <b>${esc(destino)}</b></p>
+   <div class="escolha-grid taxi">${apps.map(a => `<a href="${esc(a.u)}" target="_blank" rel="noopener" data-taxi-app="${a.destino ? '' : 'copiar'}" data-destino="${esc(destino)}"><span class="taxi-logo" style="background:${a.cor}">${a.n[0]}</span><span>${a.n}</span><small>${I18N.t(a.destino ? 'Destino já preenchido' : 'Destino copiado: cole na app')}</small></a>`).join('')}</div>
+   <p class="meta" style="margin-top:10px">${I18N.t('A Yango abre com o destino preenchido. Na Heetch, Bolt e inDrive o destino é copiado ao tocar, para colar na app (estas apps não publicam ligações directas com destino).')}</p></div>`);
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-mapas],[data-taxi],[data-copiar-coord],[data-taxi-app]'); if (!b) return;
+  const d = b.dataset;
+  if (d.copiarCoord) { navigator.clipboard?.writeText(d.copiarCoord).then(() => toast(I18N.t('Coordenadas copiadas.')), () => toast(d.copiarCoord)); return; }
+  if (d.taxiApp === 'copiar') { try { navigator.clipboard?.writeText(d.destino); } catch (er) {} toast(I18N.t('Destino copiado. Cole-o na app de táxi.')); return; }
+  if (d.taxiApp !== undefined) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  const dados = { lat: Number(d.lat), lon: Number(d.lon), nome: d.nome, end: d.end, coordFonte: d.coordFonte };
+  if (!Number.isFinite(dados.lat)) return;
+  if (d.mapas !== undefined) abrirMapas(dados); else abrirTaxi(dados);
+}, true);
 function distKm(a, b, c, d) { const R = 6371, r = x => x * Math.PI / 180; const h = Math.sin(r(c - a) / 2) ** 2 + Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(r(d - b) / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); }
 const fmtKm = k => k < 1 ? Math.round(k * 1000) + ' m' : (k < 10 ? k.toFixed(1) : Math.round(k)) + ' km';
 const TIPO_COR = { destino: '#C8102E', experiencia: '#E2650F', alojamento: '#1E63C9', restaurante: '#7A3FC8', evento: '#2F7D45', estadio: '#141414' };
@@ -205,7 +247,7 @@ V.futebol = () => {
       <span class="meta">${ic('clock')}Hora de Angola</span>
       ${j.confianca && j.confianca !== 'oficial' ? `<span class="pill ${j.confianca === 'por confirmar' ? 'p-orange' : 'p-blue'}">${j.confianca === 'por confirmar' ? 'Por confirmar' : 'Fonte identificada'}</span>` : j.confianca === 'oficial' ? '<span class="pill p-green">Oficial</span>' : ''}
       ${j.fonte_url ? `<a class="meta fonte" href="${esc(j.fonte_url)}" target="_blank" rel="noopener">${ic('globe')}${esc(j.fonte_nome || hostDe(j.fonte_url))}</a>` : ''}</div>
-     <div class="nav-links">${j.navegacao ? `<a class="yango" href="${yangoURL(j.latitude, j.longitude)}" target="_blank" rel="noopener">${ic('car')}Chamar táxi (Yango)</a><a href="${j.navegacao.google}" target="_blank" rel="noopener">${ic('map')}Google Maps</a><a href="${j.navegacao.waze}" target="_blank" rel="noopener">${ic('car')}Waze</a><button type="button" data-mapa-foco="${j.latitude},${j.longitude}">${ic('pin')}Ver no mapa</button>` : '<span class="meta">Localização do estádio por confirmar</span>'}${j.bilhetes_url ? `<a href="${esc(j.bilhetes_url)}" target="_blank" rel="noopener" class="btn btn-navy">${ic('ticket')}Bilhetes (canal oficial)</a>` : ''}</div>
+     <div class="nav-links">${j.navegacao ? `${botoesIr(j.latitude, j.longitude, j.estadio_nome, j.estadio_cidade)}<button type="button" data-mapa-foco="${j.latitude},${j.longitude}">${ic('pin')}Ver no mapa</button>` : '<span class="meta">Localização do estádio por confirmar</span>'}${j.bilhetes_url ? `<a href="${esc(j.bilhetes_url)}" target="_blank" rel="noopener" class="btn btn-navy">${ic('ticket')}Bilhetes (canal oficial)</a>` : ''}</div>
     </article>`).join('')}</section>`).join('')}
    ${d?.fontes?.length ? `<div class="card" style="padding:12px 14px;margin-top:14px"><b>Fontes</b><ul class="fontes-lista">${d.fontes.map(f => `<li>${f.url ? `<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.nome)}</a>` : esc(f.nome)}${f.oficial ? ' <span class="pill p-green">oficial</span>' : ''}${f.ultima_sync ? `<small> · actualizado ${dataSQL(f.ultima_sync).toLocaleString(I18N.loc, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}${f.ultimo_estado === 'erro' ? ' (última leitura falhou)' : ''}</small>` : ''}</li>`).join('')}</ul><p class="meta">Só mostramos ligações de bilhetes de canais oficiais. Confirme sempre a hora junto do clube ou da federação.</p></div>` : ''}</div>`;
 };

@@ -621,3 +621,14 @@ img{max-width:100%}
 span.ilustr{pointer-events:none}
 .nav-links a.yango{background:#FFD400;color:#141414;border-color:#E5BE00}
 .mais-wrap{grid-column:1/-1;display:flex;justify-content:center;padding:6px 0}
+
+.nav-links .btn-ir{background:var(--navy);color:#fff;border-color:var(--navy)}
+.nav-links .btn-taxi{background:#FFD400;color:#141414;border-color:#E5BE00}
+.selo-coord{display:inline-flex;align-items:center;gap:4px;cursor:pointer;border:0}
+.selo-coord .i{width:12px;height:12px}
+.escolha-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:12px}
+.escolha-grid a,.escolha-grid button{text-decoration:none;color:var(--fg);display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 10px;border:1px solid var(--line);border-radius:14px;background:var(--surface);font-weight:700;text-align:center;font-size:14px}
+.escolha-grid a:hover,.escolha-grid button:hover{border-color:var(--navy)}
+.escolha-grid small{font-weight:500;font-size:11px;color:var(--muted)}
+.taxi-logo{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;font-weight:800;color:#141414}
+.k-acts .btn-ir,.k-acts .btn-taxi{display:inline-flex;align-items:center;gap:4px}
