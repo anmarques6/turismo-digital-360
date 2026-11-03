@@ -68,3 +68,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
 }
 .i18n summary{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .i18n summary small{margin-left:auto}
+.neg-lista{display:grid;gap:14px}
+.neg-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.neg-acoes input{flex:1;min-width:220px;border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface-2);color:var(--fg)}
+.btn-green{background:var(--green,#0a7a3d);color:#fff}

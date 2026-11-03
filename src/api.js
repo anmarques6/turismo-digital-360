@@ -398,6 +398,7 @@ api.post('/api/reservas', corpo, async req => {
       `${c.nome}${c.quantidade > 1 ? ` (×${c.quantidade})` : ''} · ${gratis ? 'entrada gratuita' : kz(c.total) + ' · ' + metodo}${pendente ? ` · Referência ${codigo.slice(3)}` : ''} · Código ${codigo}`, pendente ? 'clock' : 'check', 'reservas');
     return d.get('SELECT * FROM reservas WHERE id = ?', rid);
   });
+  require('./parceiros').avisarParceiro(reserva).catch(e => console.error('[parceiro]', e.message));
   return { reserva, utilizador: publicoUser(await utilizador(req.user.id)) };
 });
 
@@ -558,9 +559,12 @@ api.get('/api/admin/resumo', async req => {
 });
 
 // Validação genérica a partir da definição do recurso
-async function validar(tabela, b, criar) {
+// `so`: só estes campos (formulário do parceiro); `obrig`: campos que passam a ser obrigatórios
+async function validar(tabela, b, criar, so = null, obrig = []) {
   const out = {};
-  for (const [k, c] of Object.entries(RECURSOS[tabela].campos)) {
+  for (const [k, c0_] of Object.entries(RECURSOS[tabela].campos)) {
+    if (so && !so.includes(k)) continue;
+    const c = obrig.includes(k) ? { ...c0_, req: 1 } : c0_;
     if (c.ro && !criar) continue;
     let v = b[k];
     if (v === undefined) { if (criar) { if (c.req) erro(400, `Campo obrigatório: ${c.label}.`); if (c.def !== undefined) out[k] = c.def; } continue; }
@@ -651,15 +655,19 @@ api.delete('/api/admin/catalogo/:tabela/:id', async req => {
 });
 
 // Carregamento de imagens: guardadas na base de dados (a Vercel não tem disco persistente)
-api.post('/api/admin/upload', async req => {
-  await admin(req);
+async function guardarImagem(req, uid = null) {
   const b = await lerCorpo(req, 6 * 1024 * 1024);
   const m = /^data:(image\/(?:png|jpe?g|webp));base64,(.+)$/.exec(String(b.dados || ''));
   if (!m) erro(400, 'Envie uma imagem PNG, JPG ou WEBP.');
   const buf = Buffer.from(m[2], 'base64'); if (buf.length > 3 * 1024 * 1024) erro(413, 'A imagem não pode ter mais de 3 MB.');
-  const id = (await run('INSERT INTO imagens (mime, dados) VALUES (?, ?) RETURNING id', m[1].replace('jpg', 'jpeg'), buf)).id;
+  // confirma pelo conteúdo que é mesmo uma imagem (assinaturas PNG, JPEG e WEBP)
+  const png = buf.subarray(0, 4).toString('hex') === '89504e47', jpg = buf.subarray(0, 3).toString('hex') === 'ffd8ff', webp = buf.subarray(0, 4).toString() === 'RIFF' && buf.subarray(8, 12).toString() === 'WEBP';
+  if (!png && !jpg && !webp) erro(400, 'O ficheiro não é uma imagem PNG, JPG ou WEBP válida.');
+  const mime = png ? 'image/png' : jpg ? 'image/jpeg' : 'image/webp';
+  const id = (await run('INSERT INTO imagens (mime, dados, utilizador_id) VALUES (?, ?, ?) RETURNING id', mime, buf, uid)).id;
   return { caminho: '/api/imagens/' + id };
-});
+}
+api.post('/api/admin/upload', async req => { await admin(req); return guardarImagem(req, req.user.id); });
 
 api.get('/api/admin/reservas', async req => {
   await admin(req);
@@ -748,5 +756,7 @@ api.get('/api/admin/exportar/:tabela', async (req, res) => {
 
 // Angola 365º (v3.4): geolocalização, futebol, eventos e sincronização, roteiros, ENDA AI e qualidade dos dados
 require('./turismo').registar({ api, auth, admin, corpo, auditar, limitarTentativas, listarPublico, lingua, hoje, TABELAS_PUBLICAS });
+// Parceiros (operadores): o seu negócio, catálogo criado pelo tipo de negócio, reservas recebidas
+require('./parceiros').registar({ api, auth, admin, corpo, auditar, validar, serializar, notificar, guardarImagem, agoraSQL, str });
 
 module.exports = { api };

@@ -259,9 +259,37 @@ const RECURSOS = {
   },
 };
 
+// ---------- Parceiros (operadores) ----------
+// O tipo de negócio decide automaticamente em que catálogo entram os produtos do parceiro,
+// que campos o formulário mostra e que valores ficam fixos (tipo de alojamento, empresa, organizador…).
+//   unico: o próprio negócio é o produto (um hotel, um restaurante) e é criado logo no registo
+const AL = (id, nome, tipo, ic = 'bed') => [id, { nome, grupo: 'Alojamento', tabela: 'alojamentos', fixo: { tipo }, unico: 1, icone: ic }];
+const TIPOS_NEGOCIO = Object.fromEntries([
+  AL('hotel', 'Hotel', 'Hotéis'), AL('resort', 'Resort', 'Resorts', 'palm'), AL('residencial', 'Residencial', 'Residenciais'),
+  AL('pousada', 'Pousada', 'Pousadas'), AL('hospedaria', 'Hospedaria / pensão', 'Hospedarias'), AL('lodge', 'Lodge', 'Lodges', 'palm'),
+  AL('apartamentos', 'Apartamentos turísticos', 'Apartamentos'), AL('villa', 'Villa / casa de férias', 'Villas'),
+  ['restaurante', { nome: 'Restaurante, bar ou café', grupo: 'Restauração', tabela: 'restaurantes', unico: 1, icone: 'food' }],
+  ['agencia', { nome: 'Agência de viagens / operador de experiências', grupo: 'Experiências', tabela: 'experiencias', icone: 'palm' }],
+  ['guia', { nome: 'Guia turístico', grupo: 'Experiências', tabela: 'experiencias', icone: 'compass' }],
+  ['rentacar', { nome: 'Rent-a-car (aluguer de viaturas)', grupo: 'Transportes', tabela: 'viaturas', icone: 'car' }],
+  ['eventos', { nome: 'Organizador de eventos', grupo: 'Eventos', tabela: 'eventos', icone: 'cal' }],
+  ['tradutor', { nome: 'Tradutor / intérprete', grupo: 'Serviços', tabela: 'tradutores', unico: 1, icone: 'lang' }],
+]);
+// Campos que o parceiro preenche em cada catálogo (os restantes vêm do negócio ou são da administração)
+const CAMPOS_PARCEIRO = {
+  alojamentos:  ['nome', 'tipo', 'etiqueta', 'comodidades', 'preco_noite', 'oferta_pct', 'quartos', 'horario', 'imagem'],
+  restaurantes: ['nome', 'descricao', 'especialidade', 'nivel_preco', 'preco_medio', 'horario', 'imagem'],
+  experiencias: ['titulo', 'categoria', 'local', 'descricao', 'descricao_longa', 'preco', 'duracao', 'grupo_min', 'grupo_max', 'disponibilidade', 'idiomas', 'inclui', 'imagem', 'galeria', 'endereco', 'latitude', 'longitude'],
+  viaturas:     ['nome', 'categoria', 'lugares', 'transmissao', 'preco_dia', 'preco_promo', 'unidades', 'local_levantamento', 'imagem'],
+  eventos:      ['titulo', 'categoria', 'data', 'hora', 'data_fim', 'local', 'descricao', 'preco', 'lotacao', 'bilhetes_url', 'imagem', 'endereco', 'latitude', 'longitude'],
+  tradutores:   ['nome', 'idiomas', 'preco_hora', 'cidade', 'disponivel', 'imagem'],
+};
+// Campos obrigatórios para o parceiro (além dos que já são obrigatórios no catálogo)
+const OBRIG_PARCEIRO = { alojamentos: ['preco_noite'], restaurantes: ['preco_medio'], viaturas: ['preco_dia'] };
+
 // tipo (singular) -> nome da tabela
 const TABELA_DO_TIPO = Object.fromEntries(Object.entries(RECURSOS).map(([t, r]) => [r.tipo, t]));
 const JSON_CAMPOS = new Set(['inclui', 'galeria', 'comodidades', 'idiomas', 'i18n', 'ingredientes', 'aliases']);
 const LINGUAS_TRAD = ['en', 'fr', 'es'];
 
-module.exports = { RECURSOS, TABELA_DO_TIPO, JSON_CAMPOS, CAT, LINGUAS_TRAD };
+module.exports = { RECURSOS, TABELA_DO_TIPO, JSON_CAMPOS, CAT, LINGUAS_TRAD, TIPOS_NEGOCIO, CAMPOS_PARCEIRO, OBRIG_PARCEIRO };

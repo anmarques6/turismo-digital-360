@@ -301,6 +301,7 @@ V.perfil = () => {
     <button data-go="reservas">${ic('ticket')}<span>As minhas reservas</span>${ic('chev')}</button>
     <button data-go="pagamentos">${ic('wallet')}<span>Carteira e pagamentos</span>${ic('chev')}</button>
     <button data-go="favoritos">${ic('heart')}<span>Favoritos</span>${ic('chev')}</button>
+    <button data-go="negocio">${ic('brief')}<span>${u.papel === 'parceiro' ? 'Área do parceiro: o meu negócio' : 'Tenho um negócio: tornar-me parceiro'}</span>${ic('chev')}</button>
     <button data-editar-perfil>${ic('edit')}<span>Editar perfil e senha</span>${ic('chev')}</button>
     <button data-theme-toggle>${ic('moon')}<span>Tema escuro / claro</span>${ic('chev')}</button>
     <div class="row-lang">${ic('globe')}<span>Idioma</span>${I18N.seletor('compact')}</div>

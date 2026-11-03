@@ -328,3 +328,63 @@ test('K2 subscrição de push: validada, guardada e usada nas notificações; su
   const L = (await pg.query("SELECT endpoint FROM push_subscricoes")).rows.map(x => x.endpoint); pg.fechar();
   assert.deepEqual(L, ['https://fcm.googleapis.com/fcm/send/abc'], 'a subscrição que respondeu 410 foi removida');
 });
+
+// ---------- L. Parceiros (operadores) ----------
+test('L1 parceiro regista um hotel: produto criado no catálogo de alojamentos, em revisão até aprovação', async () => {
+  const op = (await req('POST', '/api/auth/registar', { nome: 'Hotel Exemplo Lda', email: `op${Date.now()}@exemplo.ao`, senha: 'segredo12' })).j.token;
+  const esq = await req('GET', '/api/parceiro/esquema'); assert.equal(esq.status, 200);
+  assert.equal(esq.j.tipos.hotel.tabela, 'alojamentos'); assert.ok(esq.j.campos.alojamentos.preco_noite.req);
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  assert.equal((await req('POST', '/api/parceiro/upload', { dados: 'data:image/png;base64,' + Buffer.from('<script>').toString('base64') }, op)).status, 400, 'não aceita ficheiros que não são imagens');
+  const foto = (await req('POST', '/api/parceiro/upload', { dados: png }, op)).j.caminho; assert.match(foto, /^\/api\/imagens\/\d+$/);
+  const neg = { tipo_negocio: 'hotel', nome: 'Hotel Marginal Exemplo', telefone: '923 000 111', endereco: 'Av. 4 de Fevereiro', latitude: LUANDA.lat, longitude: LUANDA.lon, imagem: foto };
+  assert.equal((await req('POST', '/api/parceiro/negocios', { negocio: { ...neg, latitude: 38.7, longitude: -9.1 }, produto: { preco_noite: 50000 } }, op)).status, 400, 'fora de Angola');
+  assert.equal((await req('POST', '/api/parceiro/negocios', { negocio: neg, produto: {} }, op)).status, 400, 'preço obrigatório');
+  const r = await req('POST', '/api/parceiro/negocios', { negocio: neg, produto: { preco_noite: 55000, quartos: 20, comodidades: ['Wi-Fi', 'Piscina'], tipo: 'Villas' } }, op);
+  assert.equal(r.status, 200, JSON.stringify(r.j));
+  assert.equal(r.j.negocio.estado, 'em_revisao'); assert.equal(r.j.negocio.provincia, 'Luanda'); assert.ok(r.j.negocio.municipio, 'município do mapa oficial');
+  assert.equal(r.j.produto.tipo, 'Hotéis', 'o tipo vem do tipo de negócio'); assert.equal(r.j.produto.ativo, 0); assert.equal(r.j.produto.parceiro, 1);
+  assert.equal(r.j.produto.negocio_id, r.j.negocio.id); assert.equal(Number(r.j.produto.latitude), LUANDA.lat);
+  assert.equal((await req('GET', '/api/auth/eu', null, op)).j.utilizador.papel, 'parceiro');
+  assert.ok(!(await req('GET', '/api/alojamentos')).j.some(a => a.id === r.j.produto.id), 'não aparece antes de aprovado');
+  // outro utilizador não mexe no negócio nem nos produtos
+  assert.equal((await req('PUT', `/api/parceiro/produtos/alojamentos/${r.j.produto.id}`, { preco_noite: 1 }, outro)).status, 403);
+  assert.equal((await req('PUT', `/api/parceiro/produtos/utilizadores/1`, { nome: 'x' }, op)).status, 404, 'só tabelas do catálogo do parceiro');
+  assert.equal((await req('PATCH', `/api/parceiro/produtos/alojamentos/${r.j.produto.id}`, { ativo: 1 }, op)).status, 409, 'não se publica sem aprovação');
+  // administração aprova
+  assert.equal((await req('PATCH', `/api/admin/negocios/${r.j.negocio.id}`, { estado: 'aprovado' }, op)).status, 403);
+  const L = (await req('GET', '/api/admin/negocios', null, admin)).j; assert.ok(L.find(n => n.id === r.j.negocio.id).produtos.length === 1);
+  assert.equal((await req('PATCH', `/api/admin/negocios/${r.j.negocio.id}`, { estado: 'aprovado' }, admin)).status, 200);
+  const pub = (await req('GET', '/api/alojamentos')).j.find(a => a.id === r.j.produto.id);
+  assert.ok(pub, 'publicado após aprovação'); assert.equal(pub.coord_estado, 'verificada'); assert.equal(pub.preco_noite, 55000);
+  // um cliente reserva: o parceiro é avisado e vê a reserva no painel
+  const rv = await req('POST', '/api/reservas', { tipo: 'alojamento', item_id: pub.id, quantidade: 2, data: new Date(Date.now() + 9 * 864e5).toISOString().slice(0, 10), metodo: 'Multicaixa Express' }, cliente);
+  assert.equal(rv.status, 200, JSON.stringify(rv.j));
+  await new Promise(x => setTimeout(x, 300));
+  const painel = (await req('GET', '/api/parceiro/painel', null, op)).j;
+  assert.equal(painel.reservas.length, 1); assert.equal(painel.reservas[0].codigo, rv.j.reserva.codigo); assert.ok(painel.reservas[0].cliente_nome);
+  assert.ok((await req('GET', '/api/notificacoes', null, op)).j.lista.some(n => n.titulo === 'Nova reserva recebida'));
+  assert.equal((await req('GET', '/api/parceiro/painel', null, outro)).j.reservas.length, 0, 'outros não vêem reservas alheias');
+  // editar o negócio actualiza o produto principal
+  assert.equal((await req('PUT', `/api/parceiro/negocios/${r.j.negocio.id}`, { negocio: { ...neg, nome: 'Hotel Marginal Novo', telefone: '923 999 999' } }, op)).status, 200);
+  const ed = (await req('GET', '/api/parceiro/painel', null, op)).j.produtos[0];
+  assert.equal(ed.nome, 'Hotel Marginal Novo'); assert.equal(ed.telefone, '923 999 999');
+  // suspender esconde tudo
+  await req('PATCH', `/api/admin/negocios/${r.j.negocio.id}`, { estado: 'suspenso', nota_admin: 'teste' }, admin);
+  assert.ok(!(await req('GET', '/api/alojamentos')).j.some(a => a.id === pub.id));
+});
+
+test('L2 rent-a-car e organizador de eventos: vários produtos com empresa/organizador automáticos', async () => {
+  const op = (await req('POST', '/api/auth/registar', { nome: 'Rent Exemplo', email: `rc${Date.now()}@exemplo.ao`, senha: 'segredo12' })).j.token;
+  const r = await req('POST', '/api/parceiro/negocios', { negocio: { tipo_negocio: 'rentacar', nome: 'Kianda Rent', telefone: '+244 923 111 222', endereco: 'Aeroporto 4 de Fevereiro', latitude: -8.8584, longitude: 13.2312 } }, op);
+  assert.equal(r.status, 200, JSON.stringify(r.j)); assert.equal(r.j.produto, null, 'rent-a-car não cria produto único');
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const foto = (await req('POST', '/api/parceiro/upload', { dados: png }, op)).j.caminho;
+  const v = await req('POST', `/api/parceiro/negocios/${r.j.negocio.id}/produtos`, { nome: 'Toyota Hilux', categoria: 'SUVs', preco_dia: 45000, imagem: foto, empresa: 'Outra' }, op);
+  assert.equal(v.status, 200, JSON.stringify(v.j)); assert.equal(v.j.empresa, 'Kianda Rent'); assert.equal(v.j.local_levantamento, 'Aeroporto 4 de Fevereiro');
+  const ev = (await req('POST', '/api/parceiro/negocios', { negocio: { tipo_negocio: 'eventos', nome: 'Kianda Eventos', telefone: '923 111 333', endereco: 'Ilha de Luanda', latitude: LUANDA.lat, longitude: LUANDA.lon } }, op)).j.negocio;
+  const e = await req('POST', `/api/parceiro/negocios/${ev.id}/produtos`, { titulo: 'Noite de Semba', categoria: 'Música', data: new Date(Date.now() + 20 * 864e5).toISOString().slice(0, 10), hora: '20:00', preco: 5000, lotacao: 200, imagem: foto }, op);
+  assert.equal(e.status, 200, JSON.stringify(e.j)); assert.equal(e.j.organizador, 'Kianda Eventos'); assert.equal(e.j.confianca, 'fonte identificada'); assert.ok(e.j.municipio && e.j.provincia_id, 'município e província do mapa oficial');
+  const p = (await req('GET', '/api/parceiro/painel', null, op)).j; assert.equal(p.negocios.length, 2); assert.equal(p.produtos.length, 2);
+  assert.equal((await req('DELETE', `/api/parceiro/produtos/viaturas/${v.j.id}`, null, op)).j.apagado, true);
+});

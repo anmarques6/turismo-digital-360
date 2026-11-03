@@ -10,7 +10,7 @@ const fecharDrawer = () => document.querySelector('.drawer')?.remove();
 
 function nav() {
   const r = A.esquema?.recursos || {};
-  return [['resumo', 'chart', 'Resumo'], ['reservas', 'ticket', 'Reservas'], ['utilizadores', 'users', 'Utilizadores'], ['sep', 'Catálogo'],
+  return [['resumo', 'chart', 'Resumo'], ['reservas', 'ticket', 'Reservas'], ['utilizadores', 'users', 'Utilizadores'], ['parceiros', 'badge', 'Parceiros (operadores)'], ['sep', 'Catálogo'],
     ...Object.entries(r).map(([k, v]) => ['cat/' + k, v.icone, v.titulo]), ['sep', 'Comunidade'], ['avaliacoes', 'star', 'Avaliações'], ['suporte', 'headset', 'Pedidos de suporte'], ['sep', 'Dados e fontes'], ['fontes', 'globe', 'Fontes e pesquisa diária'], ['qualidade', 'check', 'Qualidade dos dados'], ['enda', 'chat', 'ENDA AI: registos'], ['sep', 'Sistema'], ['auditoria', 'list', 'Auditoria'], ['config', 'lock', 'Entrada com redes sociais']];
 }
 function shell(html) {
@@ -196,6 +196,20 @@ document.addEventListener('click', async e => {
   if (b.dataset.editarQ) { const [t, id] = b.dataset.editarQ.split(':'); location.hash = 'cat/' + t; setTimeout(() => abrirForm(t, +id), 600); }
 });
 
+/* ---------- parceiros (operadores) ---------- */
+const EST_NEG = { em_revisao: ['Em revisão', 'p-orange'], aprovado: ['Aprovado', 'p-green'], rejeitado: ['A corrigir', 'p-red'], suspenso: ['Suspenso', 'p-red'] };
+async function vParceiros() {
+  const L = await API.get('/api/admin/negocios'); const rev = L.filter(n => n.estado === 'em_revisao').length;
+  shell(head('Parceiros (operadores)', `${L.length} negócio${L.length === 1 ? '' : 's'} · ${rev} à espera de aprovação`) + (L.length ? `<div class="neg-lista">${L.map(n => { const [l, c] = EST_NEG[n.estado];
+    return `<section class="panel neg-adm"><div style="display:flex;gap:14px;flex-wrap:wrap">${n.imagem ? `<img src="${esc(n.imagem)}" alt="" style="width:110px;height:82px;object-fit:cover;border-radius:10px">` : ''}<div style="flex:1;min-width:220px"><span class="pill ${c}">${l}</span> <small class="meta">${esc(n.tipo_nome)}</small><h2 style="margin:4px 0">${esc(n.nome)}</h2>
+     <p class="meta">${esc([n.endereco, n.bairro, n.municipio, n.provincia].filter(Boolean).join(', '))} · <a class="link" style="display:inline" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${n.latitude}&mlon=${n.longitude}#map=17/${n.latitude}/${n.longitude}">ver no mapa</a></p>
+     <p class="meta">${esc(n.telefone || '')}${n.email ? ' · ' + esc(n.email) : ''}${n.site ? ` · <a class="link" style="display:inline" href="${esc(n.site)}" target="_blank" rel="noopener">${esc(n.site)}</a>` : ''}${n.nif ? ' · NIF ' + esc(n.nif) : ''}</p>
+     <p class="meta">Conta: <b>${esc(n.dono_nome)}</b> · ${esc(n.dono_email)}${n.dono_telefone ? ' · ' + esc(n.dono_telefone) : ''} · registado ${dt(n.criado_em)}</p>${n.descricao ? `<p style="margin-top:6px">${esc(n.descricao)}</p>` : ''}
+     <p class="meta" style="margin-top:6px"><b>Produtos (${n.produtos.length}):</b> ${n.produtos.map(p => `${esc(p.nome)}${p.ativo ? '' : ' (oculto)'}`).join(' · ') || '—'}</p></div></div>
+     <div class="neg-acoes"><input type="text" data-neg-nota="${n.id}" placeholder="Mensagem para o parceiro (obrigatória para pedir correcção)" value="${esc(n.nota_admin || '')}" aria-label="Mensagem para o parceiro">
+      ${n.estado !== 'aprovado' ? `<button class="btn btn-green sm" data-neg="${n.id}:aprovado">${ic('check')} Aprovar e publicar</button>` : ''}${n.estado !== 'rejeitado' ? `<button class="btn btn-ghost sm" data-neg="${n.id}:rejeitado">Pedir correcção</button>` : ''}${n.estado !== 'suspenso' ? `<button class="btn btn-ghost sm" data-neg="${n.id}:suspenso" style="color:var(--red)">Suspender</button>` : ''}</div></section>`; }).join('')}</div>` : vazio('Ainda não há parceiros registados. Os operadores registam-se em «Área do parceiro», no site.')));
+}
+
 /* ---------- desenho e navegação ---------- */
 async function render() {
   if (!A.user) return loginView();
@@ -204,6 +218,7 @@ async function render() {
     if (h === 'resumo') await vResumo();
     else if (h === 'reservas') await vReservas();
     else if (h === 'utilizadores') await vUtilizadores();
+    else if (h === 'parceiros') await vParceiros();
     else if (h === 'avaliacoes') await vAvaliacoes();
     else if (h === 'suporte') await vSuporte();
     else if (h === 'config') await vConfig();
@@ -252,6 +267,11 @@ document.addEventListener('click', async e => {
   if (d.ativo) { const [id, v] = d.ativo.split(':'); try { await API.patch('/api/admin/utilizadores/' + id, { ativo: +v }); toast(+v ? 'Conta reactivada' : 'Conta suspensa'); render(); } catch (er) { toast(er.message, 1); } return; }
   if (d.aval) { const [id, v] = d.aval.split(':'); try { await API.patch('/api/admin/avaliacoes/' + id, { aprovada: +v }); render(); } catch (er) { toast(er.message, 1); } return; }
   if (d.avalDel) { if (t.dataset.confirmar !== '1') { t.dataset.confirmar = '1'; t.style.background = 'var(--red)'; t.style.color = '#fff'; t.title = 'Toque de novo para apagar'; return; } try { await API.del('/api/admin/avaliacoes/' + d.avalDel); toast('Avaliação apagada'); render(); } catch (er) { toast(er.message, 1); } return; }
+});
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-neg]'); if (!b) return;
+  const [id, estado] = b.dataset.neg.split(':'); const nota = document.querySelector(`[data-neg-nota="${id}"]`)?.value.trim() || '';
+  try { await API.patch('/api/admin/negocios/' + id, { estado, nota_admin: nota }); toast({ aprovado: 'Negócio aprovado e publicado', rejeitado: 'Pedido de correcção enviado', suspenso: 'Negócio suspenso' }[estado]); render(); } catch (er) { toast(er.message, 1); }
 });
 document.addEventListener('change', async e => {
   const t = e.target; const d = t.dataset;
