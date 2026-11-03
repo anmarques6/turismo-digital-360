@@ -6,12 +6,19 @@ const b64u = b => Buffer.from(b).toString('base64url');
 const unb64u = s => Buffer.from(String(s), 'base64url');
 const ASSUNTO = process.env.VAPID_ASSUNTO || 'https://turismo-digital-360.vercel.app';
 
+let cacheChaves;
 function chaves() {
-  const pub = process.env.VAPID_PUBLICA, priv = process.env.VAPID_PRIVADA;
-  if (!pub || !priv) return null;
-  const p = unb64u(pub); if (p.length !== 65 || p[0] !== 4) return null;
-  const chave = crypto.createPrivateKey({ key: { kty: 'EC', crv: 'P-256', d: priv, x: b64u(p.subarray(1, 33)), y: b64u(p.subarray(33)) }, format: 'jwk' });
-  return { publica: pub, chave };
+  if (cacheChaves !== undefined) return cacheChaves;
+  const pub = String(process.env.VAPID_PUBLICA || '').trim(), priv = String(process.env.VAPID_PRIVADA || '').trim();
+  cacheChaves = null; if (!pub || !priv) return null;
+  try {
+    // a chave pública é recalculada a partir da privada (evita pares trocados)
+    const e = crypto.createECDH('prime256v1'); e.setPrivateKey(unb64u(priv)); const p = e.getPublicKey();
+    if (b64u(p) !== pub) console.error('[push] VAPID_PUBLICA não corresponde à VAPID_PRIVADA: uso a chave pública calculada.');
+    const chave = crypto.createPrivateKey({ key: { kty: 'EC', crv: 'P-256', d: b64u(unb64u(priv)), x: b64u(p.subarray(1, 33)), y: b64u(p.subarray(33)) }, format: 'jwk' });
+    cacheChaves = { publica: b64u(p), chave };
+  } catch (er) { console.error('[push] chaves VAPID inválidas:', er.message); }
+  return cacheChaves;
 }
 // Gera um par de chaves VAPID novo (para a configuração inicial)
 function gerarChaves() {
