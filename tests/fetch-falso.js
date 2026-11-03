@@ -35,6 +35,7 @@ globalThis.fetch = async (url, op) => {
     if (/quantas/i.test(t)) return dizer('mensagens=' + b.messages.length + ' modelo=' + b.model);
     return dizer('Olá, sou a ENDA AI.');
   }
+  if (u.startsWith('https://www.wikidata.org/w/api.php')) return json({ entities: { Q999: { claims: { P18: [{ mainsnak: { datavalue: { value: 'Resort Teste Namibe.jpg' } } }] } } } });
   // OpenStreetMap (Overpass): o 1.º servidor falha, o 2.º responde
   if (u.startsWith('https://maps.mail.ru/osm/')) return new Response('Gateway Timeout', { status: 504 });
   if (u.startsWith('https://overpass.kumi.systems/')) return json({ elements: [
@@ -45,7 +46,7 @@ globalThis.fetch = async (url, op) => {
     { type: 'node', id: 105, lat: -8.8120, lon: 13.2330, tags: { amenity: 'restaurant', name: 'Restaurante Teste da Ilha', cuisine: 'seafood;regional', opening_hours: 'Mo-Su 12:00-23:00' } },
     { type: 'node', id: 106, lat: 38.72, lon: -9.14, tags: { amenity: 'restaurant', name: 'Restaurante de Lisboa' } },
     { type: 'node', id: 107, lat: -9.0745, lon: 16.0010, tags: { natural: 'waterfall', name: 'Quedas de Calandula' } },
-    { type: 'way', id: 108, center: { lat: -15.1960, lon: 12.1520 }, tags: { leisure: 'resort', name: 'Resort Teste do Namibe' } },
+    { type: 'way', id: 108, center: { lat: -15.1960, lon: 12.1520 }, tags: { leisure: 'resort', name: 'Resort Teste do Namibe', wikidata: 'Q999' } },
   ] });
   // Rádio 5 (RNA): 1.ª leitura, 2.ª com um jogo alterado e um repetido, depois a fonte falha
   if (u.startsWith('https://teste.rna.ao/ajax_inicio.php?acao=jogos_proximos')) {

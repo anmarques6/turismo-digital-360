@@ -794,3 +794,5 @@ I18N.dic([
   ['Quedas de Calandula', 'Calandula Falls', 'Chutes de Calandula', 'Cataratas de Calandula'],
 ]);
 I18N.re([[/^Ver mais \((\d+) restantes\)$/, 'Show more ($1 left)', 'Voir plus ($1 restants)', 'Ver más ($1 restantes)']]);
+I18N.dic([['Chamar táxi (Yango)', 'Call a taxi (Yango)', 'Appeler un taxi (Yango)', 'Pedir taxi (Yango)'], ['Táxi Yango', 'Yango taxi', 'Taxi Yango', 'Taxi Yango']]);
+I18N.re([[/^Site oficial: (.+)$/, 'Official site: $1', 'Site officiel : $1', 'Sitio oficial: $1'], [/^Foto: (.+)$/, 'Photo: $1', 'Photo : $1', 'Foto: $1']]);

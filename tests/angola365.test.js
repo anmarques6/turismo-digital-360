@@ -273,7 +273,10 @@ test('J1 importação do OpenStreetMap: praias, alojamentos e restaurantes no ma
   assert.equal(palm.length, 1); assert.ok(palm[0].latitude != null, 'o hotel existente recebeu a localização');
   const res = c.alojamentos.find(a => a.nome === 'Residencial Teste Kinaxixe');
   assert.equal(res.tipo, 'Residenciais'); assert.equal(res.parceiro, 0); assert.equal(res.preco_noite, null); assert.equal(res.site, 'https://residencialteste.ao/');
-  assert.equal(c.alojamentos.find(a => a.nome === 'Resort Teste do Namibe').tipo, 'Resorts');
+  const resort = c.alojamentos.find(a => a.nome === 'Resort Teste do Namibe');
+  assert.equal(resort.tipo, 'Resorts');
+  assert.match(resort.imagem, /^https:\/\/commons\.wikimedia\.org\/wiki\/Special:FilePath\/Resort_Teste_Namibe\.jpg/); assert.equal(resort.imagem_ilustrativa, 0);
+  assert.match(resort.imagem_fonte, /commons\.wikimedia\.org\/wiki\/File:/);
   const rest = c.restaurantes.find(x => x.nome === 'Restaurante Teste da Ilha');
   assert.equal(rest.especialidade, 'Marisqueira · Cozinha angolana'); assert.equal(rest.nivel_preco, null); assert.equal(rest.horario, 'Mo-Su 12:00-23:00');
   assert.ok(!c.restaurantes.some(x => x.nome === 'Restaurante de Lisboa'));
@@ -282,7 +285,8 @@ test('J1 importação do OpenStreetMap: praias, alojamentos e restaurantes no ma
   assert.equal(r.j.novos, 0);
   // perto de mim encontra a residencial
   const perto = (await req('GET', '/api/geo/perto?lat=-8.825&lon=13.240&raio=2&tipos=alojamento')).j;
-  assert.ok(perto.itens.some(i => i.nome === 'Residencial Teste Kinaxixe'));
+  const rk = perto.itens.find(i => i.nome === 'Residencial Teste Kinaxixe'); assert.ok(rk);
+  assert.match(rk.navegacao.yango, /^https:\/\/yango\.go\.link\/route\?end-lat=-8\.825&end-lon=13\.24&ref=angola365&/);
 });
 test('J2 nome oficial «Quedas de Calandula» e experiências com localização', async () => {
   const c = (await req('GET', '/api/catalogo')).j;

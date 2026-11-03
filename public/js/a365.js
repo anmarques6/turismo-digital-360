@@ -13,13 +13,15 @@ try { const p = JSON.parse(sessionStorage.getItem('a365_pos')); if (p && p.lat) 
 const guardarPos = () => { try { sessionStorage.setItem('a365_pos', JSON.stringify(S.pos)); } catch (e) {} };
 
 /* ---------- auxiliares ---------- */
-const navURL = (lat, lon) => ({ google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, waze: `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`, osm: `https://www.openstreetmap.org/directions?to=${lat},${lon}` });
+// Pedir táxi na Yango (formato oficial de ligação da Yango: abre a app; sem app abre a página de pedido da Yango)
+const yangoURL = (lat, lon) => { const p = S.pos; const ini = p ? `start-lat=${p.lat}&start-lon=${p.lon}&` : ''; const fb = encodeURIComponent(`https://yango.com/en_int/order/?${p ? `gfrom=${p.lon},${p.lat}&` : ''}gto=${lon},${lat}&ref=angola365`); return `https://yango.go.link/route?${ini}end-lat=${lat}&end-lon=${lon}&ref=angola365&adj_t=vokme8e_nd9s9z9&lang=pt&adj_deeplink_js=1&adj_fallback=${fb}`; };
+const navURL = (lat, lon) => ({ yango: yangoURL(lat, lon), google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, waze: `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`, osm: `https://www.openstreetmap.org/directions?to=${lat},${lon}` });
 function navLinks(it, compacto) {
   const lat = it.latitude ?? it.lat, lon = it.longitude ?? it.lon;
   if (lat == null || lon == null) return compacto ? '' : `<span class="meta coord-falta">${ic('pin')}Localização exacta por confirmar</span>`;
   const u = navURL(lat, lon); const dist = S.pos ? distKm(S.pos.lat, S.pos.lon, lat, lon) : null;
   return `<div class="nav-links">${dist != null ? `<span class="meta">${ic('compass')}${fmtKm(dist)} em linha recta</span>` : ''}${coordSelo(it)}
-   <a href="${u.google}" target="_blank" rel="noopener">${ic('map')}Google Maps</a><a href="${u.waze}" target="_blank" rel="noopener">${ic('car')}Waze</a><a href="${u.osm}" target="_blank" rel="noopener">${ic('globe')}OpenStreetMap</a>
+   <a class="yango" href="${u.yango}" target="_blank" rel="noopener">${ic('car')}Chamar táxi (Yango)</a><a href="${u.google}" target="_blank" rel="noopener">${ic('map')}Google Maps</a><a href="${u.waze}" target="_blank" rel="noopener">${ic('car')}Waze</a><a href="${u.osm}" target="_blank" rel="noopener">${ic('globe')}OpenStreetMap</a>
    <button type="button" data-mapa-foco="${lat},${lon}">${ic('pin')}Ver no mapa</button></div>`;
 }
 function coordSelo(it) {
@@ -203,7 +205,7 @@ V.futebol = () => {
       <span class="meta">${ic('clock')}Hora de Angola</span>
       ${j.confianca && j.confianca !== 'oficial' ? `<span class="pill ${j.confianca === 'por confirmar' ? 'p-orange' : 'p-blue'}">${j.confianca === 'por confirmar' ? 'Por confirmar' : 'Fonte identificada'}</span>` : j.confianca === 'oficial' ? '<span class="pill p-green">Oficial</span>' : ''}
       ${j.fonte_url ? `<a class="meta fonte" href="${esc(j.fonte_url)}" target="_blank" rel="noopener">${ic('globe')}${esc(j.fonte_nome || hostDe(j.fonte_url))}</a>` : ''}</div>
-     <div class="nav-links">${j.navegacao ? `<a href="${j.navegacao.google}" target="_blank" rel="noopener">${ic('map')}Google Maps</a><a href="${j.navegacao.waze}" target="_blank" rel="noopener">${ic('car')}Waze</a><button type="button" data-mapa-foco="${j.latitude},${j.longitude}">${ic('pin')}Ver no mapa</button>` : '<span class="meta">Localização do estádio por confirmar</span>'}${j.bilhetes_url ? `<a href="${esc(j.bilhetes_url)}" target="_blank" rel="noopener" class="btn btn-navy">${ic('ticket')}Bilhetes (canal oficial)</a>` : ''}</div>
+     <div class="nav-links">${j.navegacao ? `<a class="yango" href="${yangoURL(j.latitude, j.longitude)}" target="_blank" rel="noopener">${ic('car')}Chamar táxi (Yango)</a><a href="${j.navegacao.google}" target="_blank" rel="noopener">${ic('map')}Google Maps</a><a href="${j.navegacao.waze}" target="_blank" rel="noopener">${ic('car')}Waze</a><button type="button" data-mapa-foco="${j.latitude},${j.longitude}">${ic('pin')}Ver no mapa</button>` : '<span class="meta">Localização do estádio por confirmar</span>'}${j.bilhetes_url ? `<a href="${esc(j.bilhetes_url)}" target="_blank" rel="noopener" class="btn btn-navy">${ic('ticket')}Bilhetes (canal oficial)</a>` : ''}</div>
     </article>`).join('')}</section>`).join('')}
    ${d?.fontes?.length ? `<div class="card" style="padding:12px 14px;margin-top:14px"><b>Fontes</b><ul class="fontes-lista">${d.fontes.map(f => `<li>${f.url ? `<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.nome)}</a>` : esc(f.nome)}${f.oficial ? ' <span class="pill p-green">oficial</span>' : ''}${f.ultima_sync ? `<small> · actualizado ${dataSQL(f.ultima_sync).toLocaleString(I18N.loc, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}${f.ultimo_estado === 'erro' ? ' (última leitura falhou)' : ''}</small>` : ''}</li>`).join('')}</ul><p class="meta">Só mostramos ligações de bilhetes de canais oficiais. Confirme sempre a hora junto do clube ou da federação.</p></div>` : ''}</div>`;
 };

@@ -99,10 +99,28 @@ async function lerOSM({ consultas = CONSULTAS, espelhos = ESPELHOS, fetchFn = fe
     out.push({ ...c, osm_id, nome: nome.slice(0, 160), lat: Math.round(lat * 1e7) / 1e7, lon: Math.round(lon * 1e7) / 1e7, municipio: loc.municipio, provincia: loc.provincia, coord_estado: loc.exacto ? 'verificada' : 'aproximada',
       fonte: `https://www.openstreetmap.org/${osm_id}`, site: urlSegura(t.website || t['contact:website'] || t.url), telefone: telefone(t), endereco: endereco(t), horario: (t.opening_hours || '').slice(0, 200) || null,
       descricao_osm: (t['description:pt'] || t.description || '').slice(0, 400) || null, cozinha: (t.cuisine || '').split(/[;,]/).map(x => COZINHA[x.trim()] || null).filter(Boolean).slice(0, 2).join(' · ') || null,
+      commons: /^File:/i.test(t.wikimedia_commons || '') ? t.wikimedia_commons.slice(5).trim() : (/commons\.wikimedia\.org\/wiki\/File:/i.test(t.image || '') ? decodeURIComponent(t.image.split('File:')[1]) : null), wikidata: /^Q\d+$/.test(t.wikidata || '') ? t.wikidata : null,
       estrelas: /^[1-5]$/.test(t.stars || '') ? Number(t.stars) : null, quartos: /^\d{1,4}$/.test(t.rooms || '') ? Number(t.rooms) : null });
   }
   out.falhas = falhas;
+  await imagensLivres(out, fetchFn);
   return out;
+}
+
+// Fotografias com licença livre (Wikimedia Commons), indicadas no próprio OpenStreetMap ou no Wikidata do lugar.
+// Não se copiam fotografias de sites de hotéis: têm direitos de autor; os estabelecimentos podem enviar as suas no painel.
+const ficheiroCommons = f => 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(f.replace(/ /g, '_')) + '?width=960';
+async function imagensLivres(L, fetchFn = fetch) {
+  const porQ = new Map(L.filter(l => !l.commons && l.wikidata).map(l => [l.wikidata, l]));
+  const ids = [...porQ.keys()];
+  for (let i = 0; i < ids.length; i += 50) {
+    try {
+      const r = await fetchFn('https://www.wikidata.org/w/api.php?action=wbgetentities&props=claims&format=json&ids=' + ids.slice(i, i + 50).join('|'), { headers: { 'User-Agent': UA } });
+      const j = await r.json();
+      for (const [q, e] of Object.entries(j.entities || {})) { const f = e.claims?.P18?.[0]?.mainsnak?.datavalue?.value; if (f && porQ.get(q)) porQ.get(q).commons = f; }
+    } catch { /* sem Wikidata: fica a imagem ilustrativa */ }
+  }
+  for (const l of L) if (l.commons) { l.imagem_livre = ficheiroCommons(l.commons); l.imagem_fonte = 'https://commons.wikimedia.org/wiki/File:' + encodeURIComponent(l.commons.replace(/ /g, '_')); }
 }
 
 function descricao(l) {
@@ -117,6 +135,7 @@ async function gravarLugar(d, l, ctx, c) {
   const ja = existentes[T].porOsm.get(l.osm_id);
   if (ja) { // já importado: actualiza só o que vem do OpenStreetMap e estava vazio
     await d.run(`UPDATE ${T} SET latitude = COALESCE(latitude, ?), longitude = COALESCE(longitude, ?), verificado_em = ? WHERE id = ?`, l.lat, l.lon, hoje, ja.id);
+    if (l.imagem_livre && (await d.run(`UPDATE ${T} SET imagem = ?, imagem_fonte = ?, imagem_ilustrativa = 0 WHERE id = ? AND imagem_ilustrativa = 1`, l.imagem_livre, l.imagem_fonte, ja.id)).changes) c.alterados++;
     c.duplicados++; return;
   }
   // o mesmo lugar já existe (nome igual ou contido, na mesma zona ou ainda sem localização)? Não duplica: dá-lhe a localização
@@ -132,11 +151,11 @@ async function gravarLugar(d, l, ctx, c) {
     existentes[T].porOsm.set(l.osm_id, igual); return;
   }
   const comum = { nome: l.nome, provincia_id: prov[l.provincia] ?? null, latitude: l.lat, longitude: l.lon, coord_estado: l.coord_estado, coord_fonte: l.fonte, municipio: l.municipio, endereco: l.endereco, horario: l.horario,
-    verificado_em: hoje, fonte: l.fonte, osm_id: l.osm_id, imagem_ilustrativa: 1, descricao: descricao(l), rating: 0, num_avaliacoes: 0, ativo: 1 };
+    verificado_em: hoje, fonte: l.fonte, osm_id: l.osm_id, imagem_ilustrativa: l.imagem_livre ? 0 : 1, imagem_fonte: l.imagem_fonte || null, descricao: descricao(l), rating: 0, num_avaliacoes: 0, ativo: 1 };
   let reg;
-  if (T === 'destinos') reg = { ...comum, categoria: l.categoria, imagem: IMG[l.categoria], palavras_chave: [l.o, l.municipio, l.provincia].join(',').toLowerCase() };
-  else if (T === 'alojamentos') { delete comum.descricao; reg = { ...comum, tipo: l.tipo, local: `${l.municipio}, ${l.provincia}`, imagem: IMG[l.tipo] || IMG['Hotéis'], parceiro: 0, site: l.site, telefone: l.telefone, preco_noite: null, quartos: l.quartos || 10, comodidades: '[]', etiqueta: l.estrelas ? `${l.estrelas}★` : null }; }
-  else reg = { ...comum, local: `${l.municipio}, ${l.provincia}`, imagem: IMG_REST[existentes[T].lista.length % 3], parceiro: 0, site: l.site, telefone: l.telefone, preco_medio: null, nivel_preco: null, especialidade: l.cozinha };
+  if (T === 'destinos') reg = { ...comum, categoria: l.categoria, imagem: l.imagem_livre || IMG[l.categoria], palavras_chave: [l.o, l.municipio, l.provincia].join(',').toLowerCase() };
+  else if (T === 'alojamentos') { delete comum.descricao; reg = { ...comum, tipo: l.tipo, local: `${l.municipio}, ${l.provincia}`, imagem: l.imagem_livre || IMG[l.tipo] || IMG['Hotéis'], parceiro: 0, site: l.site, telefone: l.telefone, preco_noite: null, quartos: l.quartos || 10, comodidades: '[]', etiqueta: l.estrelas ? `${l.estrelas}★` : null }; }
+  else reg = { ...comum, local: `${l.municipio}, ${l.provincia}`, imagem: l.imagem_livre || IMG_REST[existentes[T].lista.length % 3], parceiro: 0, site: l.site, telefone: l.telefone, preco_medio: null, nivel_preco: null, especialidade: l.cozinha };
   const ks = Object.keys(reg);
   const novo = await d.get(`INSERT INTO ${T} (${ks.join(',')}) VALUES (${ks.map(() => '?').join(',')}) ON CONFLICT (osm_id) WHERE osm_id IS NOT NULL DO NOTHING RETURNING id`, ...ks.map(k => reg[k]));
   if (!novo) { c.duplicados++; return; }
@@ -170,4 +189,4 @@ async function localizarExperiencias(d) {
   return n;
 }
 
-module.exports = { lerOSM, gravarLugar, contexto, classificar, localizarExperiencias, CONSULTAS, ESPELHOS };
+module.exports = { imagensLivres, lerOSM, gravarLugar, contexto, classificar, localizarExperiencias, CONSULTAS, ESPELHOS };

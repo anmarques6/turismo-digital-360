@@ -589,3 +589,10 @@ DO $$ DECLARE t text; BEGIN
     EXECUTE format('CREATE UNIQUE INDEX IF NOT EXISTS %I ON %I (osm_id) WHERE osm_id IS NOT NULL', t || '_osm_id', t);
   END LOOP;
 END $$;
+
+-- v3.5.1 · Créditos de imagens com licença livre (Wikimedia Commons)
+DO $$ DECLARE t text; BEGIN
+  FOREACH t IN ARRAY ARRAY['destinos','experiencias','alojamentos','restaurantes','eventos'] LOOP
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS imagem_fonte TEXT', t);
+  END LOOP;
+END $$;

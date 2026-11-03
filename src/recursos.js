@@ -23,6 +23,7 @@ const geo = {
   verificado_em: { t: 'date', label: 'Última verificação' },
   imagem_ilustrativa: { t: 'bool', label: 'A imagem é ilustrativa (não mostra o lugar exacto)', def: 0 },
   osm_id: { t: 'text', label: 'Identificador no OpenStreetMap', ro: 1 },
+  imagem_fonte: { t: 'text', label: 'Origem / crédito da imagem (URL)' },
 };
 
 

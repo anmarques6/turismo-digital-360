@@ -21,6 +21,7 @@ const linksNavegacao = (lat, lon, nome) => lat == null ? null : {
   google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`,
   waze: `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`,
   osm: `https://www.openstreetmap.org/directions?to=${lat},${lon}`,
+  yango: `https://yango.go.link/route?end-lat=${lat}&end-lon=${lon}&ref=angola365&adj_t=vokme8e_nd9s9z9&lang=pt&adj_deeplink_js=1&adj_fallback=${encodeURIComponent(`https://yango.com/en_int/order/?gto=${lon},${lat}&ref=angola365`)}`,
   apple: `https://maps.apple.com/?daddr=${lat},${lon}&q=${encodeURIComponent(nome || '')}`,
 };
 const TIPOS_GEO = { destino: 'destinos', experiencia: 'experiencias', alojamento: 'alojamentos', evento: 'eventos', restaurante: 'restaurantes' };

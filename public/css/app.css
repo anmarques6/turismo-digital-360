@@ -617,5 +617,7 @@ img{max-width:100%}
 @media (prefers-reduced-motion:reduce){.k-pensa span{animation:none}}
 
 .pic{position:relative}
-.ilustr{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.55);color:#fff;font-size:10.5px;padding:2px 7px;border-radius:6px;pointer-events:none}
+.ilustr{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.55);color:#fff;font-size:10.5px;padding:2px 7px;border-radius:6px}
+span.ilustr{pointer-events:none}
+.nav-links a.yango{background:#FFD400;color:#141414;border-color:#E5BE00}
 .mais-wrap{grid-column:1/-1;display:flex;justify-content:center;padding:6px 0}
