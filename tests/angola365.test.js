@@ -411,3 +411,71 @@ test('L3 «Este negócio é meu»: o dono reclama uma ficha existente; só passa
   assert.equal(outro2.id, r2.negocio.id); assert.equal(outro2.estado, 'rejeitado', 'o outro pedido é recusado automaticamente');
   assert.equal((await req('POST', '/api/parceiro/negocios', { negocio: neg, produto: { preco_noite: 1 }, reclamar: { tabela: 'alojamentos', id: al.id } }, op2)).status, 409, 'já tem dono');
 });
+
+// ---------- M. COMO VIAJAR ----------
+test('M1 Luanda → Quedas de Calandula: interprovincial, autocarros com ligação preenchida, voos e carro estimado', async () => {
+  const cal = (await req('GET', '/api/destinos')).j.find(d => /Calandula/.test(d.nome)); assert.ok(cal);
+  assert.equal((await req('POST', '/api/viagens/pesquisar', { origem: { provincia: 'Luanda' }, destino: { tipo: 'destino', id: cal.id } })).status, 401, 'exige sessão');
+  const amanha = new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 10);
+  assert.equal((await req('POST', '/api/viagens/pesquisar', { origem: { provincia: 'Luanda' }, destino: { tipo: 'destino', id: cal.id }, data_ida: '2020-01-01' }, cliente)).status, 400, 'data no passado');
+  assert.equal((await req('POST', '/api/viagens/pesquisar', { origem: { lat: 38.7, lon: -9.1 }, destino: { tipo: 'destino', id: cal.id } }, cliente)).status, 400, 'origem fora de Angola');
+  const r = await req('POST', '/api/viagens/pesquisar', { origem: { lat: LUANDA.lat, lon: LUANDA.lon, nome: 'Marginal' }, destino: { tipo: 'destino', id: cal.id }, data_ida: amanha, passageiros: 2 }, cliente);
+  assert.equal(r.status, 200, JSON.stringify(r.j));
+  assert.equal(r.j.origem.provincia, 'Luanda'); assert.equal(r.j.destino.provincia, 'Malanje'); assert.equal(r.j.interprovincial, true);
+  assert.equal(r.j.titulo, 'Como viajar de Luanda para Malanje?');
+  const nw = r.j.rodoviario.find(o => o.nome === 'NawaBus'); assert.equal(nw.modo, 'preenchido'); assert.equal(nw.preco, null, 'sem preço inventado'); assert.deepEqual(nw.horarios, []);
+  const mc = r.j.rodoviario.find(o => o.nome === 'MACON'); assert.equal(mc.modo, 'preenchido_a_confirmar');
+  assert.ok(!r.j.rodoviario.some(o => o.nome === 'Huambo Expresso'), 'Huambo Expresso não indica Malanje na cobertura');
+  assert.ok(r.j.aereo.length === 0, 'Malanje não tem voos domésticos registados');
+  assert.ok(r.j.carro.possivel && r.j.carro.estrada_km_estimada > 250 && r.j.carro.consumo_litros_estimado > 0);
+  // continuar na plataforma: ligação preenchida da NawaBus, redireccionamento registado, nunca uma reserva
+  const c = await req('POST', `/api/viagens/${r.j.viagem_id}/continuar`, { transportadora_id: nw.id }, cliente);
+  assert.equal(c.status, 200); assert.equal(c.j.url, `https://www.nawabus.ao/search?origin=Luanda&destination=Malanje&date=${amanha}&tripType=one-way`);
+  const c2 = (await req('POST', `/api/viagens/${r.j.viagem_id}/continuar`, { transportadora_id: mc.id }, cliente)).j;
+  assert.equal(c2.url, `https://www.webrodoviaria.com.br/VendaWebMacon/busca?origemCodigo=228&destinoCodigo=21947&dataInicial=${amanha}&dataFinal=`);
+  assert.equal((await req('POST', `/api/viagens/${r.j.viagem_id}/continuar`, { transportadora_id: nw.id }, outro)).status, 404, 'viagem de outra pessoa');
+  let v = (await req('GET', '/api/viagens', null, cliente)).j.find(x => x.id === r.j.viagem_id);
+  assert.equal(v.estado, 'redireccionada'); assert.equal(v.estado_rotulo, 'Redireccionamento efectuado');
+  // o turista regista a referência: fica pendente, nunca confirmada sem o operador
+  assert.equal((await req('PATCH', `/api/viagens/${v.id}`, { acao: 'referencia', referencia: 'MC-123456' }, cliente)).j.estado, 'reserva_pendente');
+  assert.equal((await req('PATCH', `/api/admin/viagens/${v.id}`, { estado: 'reserva_confirmada' }, admin)).status, 400, 'exige a prova da confirmação do operador');
+  assert.equal((await req('PATCH', `/api/admin/viagens/${v.id}`, { estado: 'reserva_confirmada', confirmado_por: 'E-mail da MACON' }, cliente)).status, 403);
+  assert.equal((await req('PATCH', `/api/admin/viagens/${v.id}`, { estado: 'reserva_confirmada', confirmado_por: 'E-mail da MACON' }, admin)).status, 200);
+  v = (await req('GET', '/api/viagens', null, cliente)).j.find(x => x.id === v.id); assert.equal(v.estado, 'reserva_confirmada');
+  assert.equal((await req('PATCH', `/api/viagens/${v.id}`, { acao: 'cancelar' }, cliente)).status, 409);
+});
+
+test('M2 Cabinda: só avião (sem ligação terrestre); mesma província: táxi e local', async () => {
+  const r = (await req('POST', '/api/viagens/pesquisar', { origem: { provincia: 'Luanda' }, destino: { provincia: 'Cabinda' } }, cliente)).j;
+  assert.equal(r.rodoviario.length, 0); assert.equal(r.carro.possivel, false); assert.ok(r.so_ar_mar);
+  assert.ok(r.aereo.some(o => o.nome === 'TAAG Angola Airlines' && o.modo === 'site'));
+  assert.match(r.aeroportos.origem, /Agostinho Neto/);
+  const l = (await req('POST', '/api/viagens/pesquisar', { origem: { lat: LUANDA.lat, lon: LUANDA.lon }, destino: { provincia: 'Luanda' } }, cliente)).j;
+  assert.equal(l.interprovincial, false); assert.equal(l.rodoviario.length + l.aereo.length, 0);
+});
+
+test('M3 backoffice: rota confirmada aparece com fonte; transportadora suspensa desaparece; verificação regista o estado', async () => {
+  const T = (await req('GET', '/api/admin/catalogo/transportadoras', null, admin)).j; const nw = T.find(t => t.conector === 'nawabus');
+  const P = (await req('GET', '/api/admin/catalogo/provincias', null, admin)).j; const pid = n => P.find(p => p.nome === n).id;
+  const rt = await req('POST', '/api/admin/catalogo/rotas', { transportadora_id: nw.id, origem_provincia_id: pid('Luanda'), destino_provincia_id: pid('Benguela'), preco: 15000, duracao_min: 420, horarios: ['06:00', '13:30'], fonte_url: 'https://www.nawabus.ao/', verificado_em: '2026-11-03' }, admin);
+  assert.equal(rt.status, 200, JSON.stringify(rt.j));
+  const r = (await req('POST', '/api/viagens/pesquisar', { origem: { provincia: 'Luanda' }, destino: { provincia: 'Benguela' } }, cliente)).j;
+  const o = r.rodoviario.find(x => x.id === nw.id); assert.equal(o.preco, 15000); assert.deepEqual(o.horarios, ['06:00', '13:30']); assert.equal(o.cobertura, 'rota_registada'); assert.equal(o.verificado_em, '2026-11-03');
+  assert.ok(r.rodoviario.some(x => x.nome === 'Huambo Expresso' && x.modo === 'preenchido_a_confirmar'));
+  assert.equal((await req('PUT', `/api/admin/catalogo/transportadoras/${nw.id}`, { estado_integracao: 'suspensa' }, admin)).status, 200);
+  assert.ok(!(await req('POST', '/api/viagens/pesquisar', { origem: { provincia: 'Luanda' }, destino: { provincia: 'Benguela' } }, cliente)).j.rodoviario.some(x => x.id === nw.id));
+  await req('PUT', `/api/admin/catalogo/transportadoras/${nw.id}`, { estado_integracao: 'activa' }, admin);
+  assert.equal((await req('POST', '/api/admin/transportes/verificar', null, cliente)).status, 403);
+  const vf = (await req('POST', '/api/admin/transportes/verificar', null, admin)).j.resultados;
+  assert.equal(vf.find(x => x.nome === 'MACON').estado_http, 403); assert.equal(vf.find(x => x.nome === 'NawaBus').estado_http, 200);
+  const m = (await req('GET', '/api/admin/transportes', null, admin)).j;
+  assert.ok(m.transportadoras.find(t => t.nome === 'MACON').ultimo_erro.includes('403')); assert.ok(m.resumo.pesquisas >= 3); assert.ok(m.transportadoras.find(t => t.nome === 'NawaBus').redireccionamentos >= 1);
+  assert.equal((await req('GET', '/api/cron/transportes')).status, 200);
+});
+
+test('M4 a mesma pesquisa repetida não duplica «As minhas viagens»', async () => {
+  const q = { origem: { provincia: 'Huambo' }, destino: { provincia: 'Namibe' }, passageiros: 3 };
+  const a = (await req('POST', '/api/viagens/pesquisar', q, outro)).j, b = (await req('POST', '/api/viagens/pesquisar', q, outro)).j;
+  assert.equal(a.viagem_id, b.viagem_id);
+  assert.notEqual((await req('POST', '/api/viagens/pesquisar', { ...q, passageiros: 2 }, outro)).j.viagem_id, a.viagem_id);
+});

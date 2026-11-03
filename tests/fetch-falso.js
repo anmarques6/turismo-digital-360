@@ -35,6 +35,9 @@ globalThis.fetch = async (url, op) => {
     if (/quantas/i.test(t)) return dizer('mensagens=' + b.messages.length + ' modelo=' + b.model);
     return dizer('Olá, sou a ENDA AI.');
   }
+  // Transportadoras (COMO VIAJAR): a MACON recusa servidores (403), as outras respondem
+  if (u.startsWith('https://www.webrodoviaria.com.br/')) return new Response('Forbidden', { status: 403 });
+  if (/^https:\/\/(www\.nawabus\.ao|huamboexpresso-bilhetes\.ao|realexpress-wl\.praxioluna\.com\.br|cidralia\.com|digital\.flytaag\.com|flyangola\.co\.ao)\//.test(u)) return new Response('<html>ok</html>', { status: 200, headers: { 'Content-Type': 'text/html' } });
   if (u.startsWith('https://www.wikidata.org/w/api.php')) return json({ entities: { Q999: { claims: { P18: [{ mainsnak: { datavalue: { value: 'Resort Teste Namibe.jpg' } } }] } } } });
   // Serviço de push do navegador (simulado): guarda o que recebeu; o endpoint «/gone» já não existe
   if (u.startsWith('https://fcm.googleapis.com/fcm/send/')) { (globalThis.__push ||= []).push({ u, h: op.headers, n: op.body.length }); return new Response('', { status: u.endsWith('/gone') ? 410 : 201 }); }

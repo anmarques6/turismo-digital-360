@@ -757,6 +757,8 @@ api.get('/api/admin/exportar/:tabela', async (req, res) => {
 // Angola 365º (v3.4): geolocalização, futebol, eventos e sincronização, roteiros, ENDA AI e qualidade dos dados
 require('./turismo').registar({ api, auth, admin, corpo, auditar, limitarTentativas, listarPublico, lingua, hoje, TABELAS_PUBLICAS });
 // Parceiros (operadores): o seu negócio, catálogo criado pelo tipo de negócio, reservas recebidas
+// COMO VIAJAR: transportadoras, pesquisa, redireccionamento, as minhas viagens
+require('./viajar').registar({ api, auth, admin, corpo, auditar, listarPublico, notificar });
 require('./parceiros').registar({ api, auth, admin, corpo, auditar, validar, serializar, notificar, guardarImagem, agoraSQL, str });
 
 module.exports = { api };

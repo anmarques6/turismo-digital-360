@@ -701,3 +701,53 @@ span.ilustr{pointer-events:none}
 @media (max-width:640px){.pn-geo-acoes>.btn-navy{width:100%;justify-content:center}.pn-ou{display:none}}
 .link.reclamar{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;margin-top:6px;flex-basis:100%;justify-content:flex-end}
 .link.reclamar .i{width:15px;height:15px}
+
+/* ---------- COMO VIAJAR ---------- */
+.vj-busca{padding:16px;display:grid;gap:10px}
+.vj-ponto{display:flex;gap:12px;align-items:center;border:1.5px solid var(--line);border-radius:14px;padding:10px 12px}
+.vj-ponto small{display:block;color:var(--muted);font-size:12px}
+.vj-ponto b{display:block;font-size:15px}
+.vj-ponto select{width:100%;border:1.5px solid var(--line);background:var(--surface-2);border-radius:10px;padding:9px 10px;font-size:14px;color:var(--fg)}
+.vj-ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);color:var(--red);flex:none}
+.vj-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr));gap:10px;align-items:end}
+.vj-form .field input{width:100%;min-width:0;box-sizing:border-box}
+.vj-tipo{display:flex;gap:14px;grid-column:1/-1;font-weight:600;font-size:14px}
+.vj-tipo label{display:flex;gap:6px;align-items:center}
+.vj-titulo{font-size:20px;letter-spacing:.01em;margin-bottom:6px}
+.vj-tabs{display:flex;gap:8px;margin:14px 0;overflow-x:auto}
+.vj-tabs button{display:flex;gap:6px;align-items:center;padding:9px 14px;border-radius:999px;border:1.5px solid var(--line);font-weight:600;white-space:nowrap;background:var(--surface)}
+.vj-tabs button[aria-selected=true]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.vj-tabs .num{background:rgba(127,127,127,.18);border-radius:999px;padding:0 7px;font-size:12px}
+.vj-ordem{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.vj-lista{display:grid;gap:12px}
+.vj-op{padding:16px;display:grid;gap:10px}
+.vj-op-top{display:flex;gap:12px;align-items:center}
+.vj-op-top h3{margin-bottom:4px}
+.vj-logo{width:48px;height:48px;border-radius:12px;object-fit:contain;flex:none;background:var(--surface-2)}
+.vj-ini{display:grid;place-items:center;font-weight:800;color:#fff;background:var(--navy)}
+.vj-dados{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:8px}
+.vj-dado{background:var(--surface-2);border-radius:12px;padding:10px 12px}
+.vj-dado small{display:block;color:var(--muted);font-size:12px;margin-bottom:2px}
+.vj-nd{color:var(--muted);font-weight:500;font-size:13.5px}
+.vj-op-bt,.vj-links{display:flex;gap:8px;flex-wrap:wrap}
+.vj-op-bt .btn-red{font-weight:800;letter-spacing:.02em}
+.vj-aero{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.vj-aero>div{border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:2px}
+.vj-aero small{color:var(--muted);font-size:12px}
+.vj-paragens{display:grid;gap:8px}
+.vj-par{display:flex;gap:10px;align-items:center;text-align:left;border:1px solid var(--line);border-radius:12px;padding:8px;background:var(--surface)}
+.vj-par img{width:64px;height:48px;border-radius:8px;object-fit:cover;flex:none}
+.vj-par small{display:block;color:var(--muted);font-size:12px}
+.vj-cont{padding:18px}
+.vj-cont-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,160px),1fr));gap:10px;margin-top:12px}
+.vj-cont-grid button{display:grid;gap:4px;justify-items:start;text-align:left;border:1.5px solid var(--line);border-radius:14px;padding:12px;background:var(--surface)}
+.vj-cont-grid .i{color:var(--red)}
+.vj-cont-grid small{color:var(--muted);font-size:12px}
+.vj-resumo{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:8px 0 12px;font-size:14px}
+.vj-resumo dt{color:var(--muted)}
+.vj-resumo dd{margin:0;font-weight:600}
+.vj-viagem{padding:16px;display:grid;gap:6px}
+@media (max-width:640px){.vj-aero{grid-template-columns:1fr}.vj-op-bt .btn{flex:1;justify-content:center}}
+.vj-nd{display:flex;gap:6px;align-items:center}
+.vj-nota{background:var(--green-bg);color:var(--fg);border-radius:10px;padding:10px 12px;font-size:14px}
+@media (max-width:640px){.vj-op-bt .btn-red{flex-basis:100%}.vj-links .btn{flex:1 1 100%;justify-content:center}}

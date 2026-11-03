@@ -10,7 +10,7 @@ const fecharDrawer = () => document.querySelector('.drawer')?.remove();
 
 function nav() {
   const r = A.esquema?.recursos || {};
-  return [['resumo', 'chart', 'Resumo'], ['reservas', 'ticket', 'Reservas'], ['utilizadores', 'users', 'Utilizadores'], ['parceiros', 'badge', 'Parceiros (operadores)'], ['sep', 'Catálogo'],
+  return [['resumo', 'chart', 'Resumo'], ['reservas', 'ticket', 'Reservas'], ['utilizadores', 'users', 'Utilizadores'], ['parceiros', 'badge', 'Parceiros (operadores)'], ['transportes', 'car', 'COMO VIAJAR: transportes'], ['sep', 'Catálogo'],
     ...Object.entries(r).map(([k, v]) => ['cat/' + k, v.icone, v.titulo]), ['sep', 'Comunidade'], ['avaliacoes', 'star', 'Avaliações'], ['suporte', 'headset', 'Pedidos de suporte'], ['sep', 'Dados e fontes'], ['fontes', 'globe', 'Fontes e pesquisa diária'], ['qualidade', 'check', 'Qualidade dos dados'], ['enda', 'chat', 'ENDA AI: registos'], ['sep', 'Sistema'], ['auditoria', 'list', 'Auditoria'], ['config', 'lock', 'Entrada com redes sociais']];
 }
 function shell(html) {
@@ -86,11 +86,12 @@ function abrirAjuste(id, nome) {
 /* ---------- catálogo ---------- */
 async function vCatalogo(tab) {
   const R = A.esquema.recursos[tab]; const L = await API.get('/api/admin/catalogo/' + tab); A.cache[tab] = L;
+  await carregarRefs(R);
   const q = A.cq.toLowerCase(); const F = L.filter(i => !q || JSON.stringify(i).toLowerCase().includes(q));
   const cel = (k, i) => { const c = R.campos[k], v = i[k];
     if (c.t === 'image') return `<img class="th" src="${esc(v)}" alt="">`;
     if (c.t === 'bool') return v ? `<span class="pill p-green">Sim</span>` : `<span class="pill p-red">Não</span>`;
-    if (c.t === 'ref') return esc(i.provincia || '—');
+    if (c.t === 'ref') { if (c.ref === 'provincias' && k === 'provincia_id') return esc(i.provincia || '—'); const o = (A.cache[c.ref] || []).find(x => x.id === v); return esc(o ? o[A.esquema.recursos[c.ref]?.campoNome || 'nome'] : '—'); }
     if (c.t === 'list') return esc((v || []).join(', '));
     if (c.t === 'date') return dd(v);
     if (/preco/.test(k)) return v == null ? '—' : kz(v);
@@ -108,7 +109,7 @@ function campoHTML(k, c, v) {
     case 'int': case 'num': return `<label class="field" for="${id}">${lbl}<input id="${id}" name="${k}" type="number" ${c.step ? `step="${c.step}"` : 'step="1"'} ${c.min !== undefined ? `min="${c.min}"` : ''} ${c.max !== undefined ? `max="${c.max}"` : ''} value="${esc(val)}" ${req} ${c.ro ? 'readonly' : ''}></label>`;
     case 'bool': return `<label class="chk"><input type="checkbox" name="${k}" ${(v ?? c.def) ? 'checked' : ''}> ${esc(c.label)}</label>`;
     case 'select': return `<label class="field" for="${id}">${lbl}<select id="${id}" name="${k}" ${req}>${c.req ? '' : '<option value="">—</option>'}${c.opts.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
-    case 'ref': return `<label class="field" for="${id}">${lbl}<select id="${id}" name="${k}"><option value="">—</option>${(A.cache.provincias || []).map(p => `<option value="${p.id}" ${p.id === v ? 'selected' : ''}>${esc(p.nome)}</option>`).join('')}</select></label>`;
+    case 'ref': { const nk = A.esquema.recursos[c.ref]?.campoNome || 'nome'; return `<label class="field" for="${id}">${lbl}<select id="${id}" name="${k}"><option value="">—</option>${(A.cache[c.ref] || []).map(p => `<option value="${p.id}" ${p.id === v ? 'selected' : ''}>${esc(p[nk])}</option>`).join('')}</select></label>`; }
     case 'date': return `<label class="field" for="${id}">${lbl}<input id="${id}" name="${k}" type="date" value="${esc(val)}" ${req}></label>`;
     case 'time': return `<label class="field" for="${id}">${lbl}<input id="${id}" name="${k}" type="time" value="${esc(val)}" ${req}></label>`;
     case 'list': return `<label class="field" for="${id}">${lbl}<textarea id="${id}" name="${k}" rows="4" ${req}>${esc((v || []).join('\n'))}</textarea></label>`;
@@ -121,9 +122,12 @@ function campoHTML(k, c, v) {
     default: return `<label class="field" for="${id}">${lbl}<input id="${id}" name="${k}" value="${esc(val)}" ${req} maxlength="300"></label>`;
   }
 }
+// Tabelas referidas pelos campos «ref» (províncias, transportadoras, terminais…)
+async function carregarRefs(R) { for (const c of Object.values(R.campos)) if (c.t === 'ref' && !A.cache[c.ref]) A.cache[c.ref] = await API.get('/api/admin/catalogo/' + c.ref); }
 async function abrirForm(tab, id) {
   const R = A.esquema.recursos[tab];
   if (!A.cache.provincias) A.cache.provincias = await API.get('/api/admin/catalogo/provincias');
+  await carregarRefs(R);
   const i = id ? (A.cache[tab] || []).find(x => x.id === +id) : {};
   A.formTab = tab;
   const d = document.createElement('div'); d.className = 'drawer';
@@ -211,6 +215,24 @@ async function vParceiros() {
       ${n.estado !== 'aprovado' ? `<button class="btn btn-green sm" data-neg="${n.id}:aprovado">${ic('check')} Aprovar e publicar</button>` : ''}${n.estado !== 'rejeitado' ? `<button class="btn btn-ghost sm" data-neg="${n.id}:rejeitado">Pedir correcção</button>` : ''}${n.estado !== 'suspenso' ? `<button class="btn btn-ghost sm" data-neg="${n.id}:suspenso" style="color:var(--red)">Suspender</button>` : ''}</div></section>`; }).join('')}</div>` : vazio('Ainda não há parceiros registados. Os operadores registam-se em «Área do parceiro», no site.')));
 }
 
+/* ---------- COMO VIAJAR: monitorização das transportadoras ---------- */
+const EST_INT = { activa: ['Activa', 'p-green'], inactiva: ['Inactiva', 'p-red'], em_integracao: ['Em integração', 'p-orange'], suspensa: ['Suspensa', 'p-red'], apenas_redireccionamento: ['Apenas redireccionamento', 'p-blue'], aguarda_parceria: ['Aguarda parceria', 'p-purple'] };
+async function vTransportes() {
+  const r = await API.get('/api/admin/transportes');
+  shell(head('COMO VIAJAR: transportes', `${r.resumo.pesquisas} pesquisas · ${r.resumo.interprovinciais} interprovinciais`, `<button class="btn btn-ghost sm" data-verificar-transp>${ic('check')} Verificar ligações agora</button><button class="btn btn-ghost sm" data-r="cat/transportadoras">${ic('edit')} Gerir transportadoras</button><button class="btn btn-ghost sm" data-r="cat/rotas">Rotas</button><button class="btn btn-ghost sm" data-r="cat/terminais">Terminais</button>`) + `
+   <section class="panel"><h2>Transportadoras e estado da integração</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Transportadora</th><th>Nível</th><th>Estado</th><th>Última verificação</th><th class="num">Resposta</th><th class="num">Viagens</th><th class="num">Redireccionamentos</th><th class="num">Reservas pendentes</th><th class="num">Confirmadas</th></tr></thead><tbody>${r.transportadoras.map(t => { const [l, c] = EST_INT[t.estado_integracao] || [t.estado_integracao, 'p-blue']; return `<tr><td><b>${esc(t.nome)}</b><br><small class="meta">${t.categoria === 'aereo' ? 'Aéreo' : 'Rodoviário'} · ${esc(t.conector)}${t.ativo ? '' : ' · desactivada'}</small></td><td>${t.nivel_integracao}</td><td><span class="pill ${c}">${l}</span></td><td>${t.ultima_verificacao ? esc(t.ultima_verificacao) : '—'}<br><small class="meta">${esc(t.ultimo_estado || '')}${t.ultimo_erro ? ' · ' + esc(t.ultimo_erro) : ''}</small></td><td class="num">${t.ultimo_tempo_ms != null ? t.ultimo_tempo_ms + ' ms' : '—'}</td><td class="num">${t.viagens}</td><td class="num">${t.redireccionamentos}</td><td class="num">${t.reservas_pendentes}</td><td class="num">${t.reservas_confirmadas}</td></tr>`; }).join('')}</tbody></table></div>
+   <p class="meta" style="margin-top:8px">Nível 1 API · 2 ligação preenchida · 3 acordo comercial · 4 só redireccionamento. Uma transportadora «em integração» abre a ligação preenchida e mostra o resumo ao turista; mude para «activa» só depois de testar num telemóvel em Angola.</p></section>
+   <section class="panel" style="margin-top:14px"><h2>Reservas a confirmar com a transportadora</h2>${r.pendentes.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Cliente</th><th>Viagem</th><th>Transportadora</th><th>Referência</th><th>Confirmação do operador</th></tr></thead><tbody>${r.pendentes.map(v => `<tr><td><b>${esc(v.cliente)}</b><br><small class="meta">${esc(v.email)}</small></td><td>${esc(v.origem_provincia)} → ${esc(v.destino_provincia)}<br><small class="meta">${v.data_ida ? dd(v.data_ida) : 'sem data'} · ${v.passageiros} passageiro(s)</small></td><td>${esc(v.transportadora || '—')}</td><td class="num">${esc(v.referencia || '')}</td><td><div class="neg-acoes" style="margin:0"><input data-conf-nota="${v.id}" placeholder="Como confirmou (ex.: e-mail da MACON)" aria-label="Como a transportadora confirmou"><button class="btn btn-green sm" data-conf-viagem="${v.id}:reserva_confirmada">Confirmada</button><button class="btn btn-ghost sm" data-conf-viagem="${v.id}:reserva_cancelada">Não existe</button></div></td></tr>`).join('')}</tbody></table></div>` : vazio('Sem reservas à espera de confirmação.')}</section>
+   <div class="panels" style="grid-template-columns:1fr 1fr;margin-top:14px"><section class="panel"><h2>Ligações mais pesquisadas</h2>${r.pares.map(p => `<div class="hbar"><span>${esc(p.origem_provincia)} → ${esc(p.destino_provincia)}</span><b class="num">${p.n}</b></div>`).join('') || vazio('Ainda sem pesquisas.')}</section>
+    <section class="panel"><h2>Últimas verificações</h2>${r.verificacoes.slice(0, 14).map(x => `<div class="hbar"><span>${esc(x.nome)}</span><span class="pill ${x.estado_http && x.estado_http < 400 ? 'p-green' : 'p-red'}">${x.estado_http ? 'HTTP ' + x.estado_http : 'sem resposta'}</span><b class="num">${x.tempo_ms} ms</b></div>`).join('') || vazio('Ainda sem verificações. A verificação automática corre todas as terças-feiras.')}</section></div>`);
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-verificar-transp],[data-conf-viagem]'); if (!b) return;
+  if (b.dataset.verificarTransp !== undefined) { b.disabled = true; try { await API.post('/api/admin/transportes/verificar'); toast('Ligações verificadas'); render(); } catch (er) { toast(er.message, 1); } finally { b.disabled = false; } return; }
+  const [id, estado] = b.dataset.confViagem.split(':'); const como = document.querySelector(`[data-conf-nota="${id}"]`)?.value.trim() || '';
+  try { await API.patch('/api/admin/viagens/' + id, { estado, confirmado_por: como }); toast(estado === 'reserva_confirmada' ? 'Reserva confirmada e cliente avisado' : 'Cliente avisado'); render(); } catch (er) { toast(er.message, 1); }
+});
+
 /* ---------- desenho e navegação ---------- */
 async function render() {
   if (!A.user) return loginView();
@@ -220,6 +242,7 @@ async function render() {
     else if (h === 'reservas') await vReservas();
     else if (h === 'utilizadores') await vUtilizadores();
     else if (h === 'parceiros') await vParceiros();
+    else if (h === 'transportes') await vTransportes();
     else if (h === 'avaliacoes') await vAvaliacoes();
     else if (h === 'suporte') await vSuporte();
     else if (h === 'config') await vConfig();
@@ -309,7 +332,7 @@ document.addEventListener('submit', async e => {
       else if (c.t === 'i18n') { const o = {}; for (const l of ['en', 'fr', 'es']) for (const fc of c.campos) { const x = (fd.get(`${k}.${l}.${fc}`) || '').trim(); if (!x) continue; (o[l] ||= {})[fc] = R.campos[fc]?.t === 'list' ? x.split('\n').map(y => y.trim()).filter(Boolean) : x; } corpo[k] = o; }
       else corpo[k] = fd.get(k) ?? '';
     }
-    try { id ? await API.put(`/api/admin/catalogo/${tab}/${id}`, corpo) : await API.post(`/api/admin/catalogo/${tab}`, corpo); fecharDrawer(); toast(id ? 'Alterações guardadas' : R.singular + ' criado(a)'); if (tab === 'provincias') delete A.cache.provincias; render(); } catch (x) { falha(x.message); }
+    try { id ? await API.put(`/api/admin/catalogo/${tab}/${id}`, corpo) : await API.post(`/api/admin/catalogo/${tab}`, corpo); fecharDrawer(); toast(id ? 'Alterações guardadas' : R.singular + ' criado(a)'); delete A.cache[tab]; render(); } catch (x) { falha(x.message); }
     return;
   }
   if (f.dataset.ajustef) {

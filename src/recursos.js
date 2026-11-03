@@ -252,6 +252,68 @@ const RECURSOS = {
     },
     lista: ['nome', 'tipo', 'metodo', 'ultima_sync', 'ultimo_estado', 'ativo'],
   },
+  transportadoras: {
+    tipo: 'transportadora', titulo: 'Transportadoras', singular: 'Transportadora', campoNome: 'nome', icone: 'car', semPublico: 1,
+    campos: {
+      nome: { t: 'text', label: 'Nome', req: 1 },
+      categoria: { t: 'select', opts: ['rodoviario', 'aereo'], label: 'Categoria (rodoviário ou aéreo)', req: 1 },
+      conector: { t: 'select', opts: ['nawabus', 'macon', 'huambo_expresso', 'real_express', 'cidralia', 'taag', 'fly_angola', 'site'], label: 'Conector (site = só abre o site oficial)', req: 1 },
+      site: { t: 'text', label: 'Site oficial ou plataforma de reserva (URL)' },
+      telefone: { t: 'text', label: 'Telefone' }, whatsapp: { t: 'text', label: 'WhatsApp (só números, com 244)' }, email: { t: 'text', label: 'E-mail' },
+      logotipo: { t: 'image', label: 'Logótipo' },
+      descricao: { t: 'textarea', label: 'Descrição e condições de viagem' },
+      cobertura: { t: 'list', label: 'Províncias servidas (uma por linha; vazio = a confirmar)' },
+      nivel_integracao: { t: 'int', label: 'Nível de integração (1 API · 2 ligação preenchida · 3 acordo comercial · 4 só redireccionamento)', min: 1, max: 4, def: 4 },
+      estado_integracao: { t: 'select', opts: ['activa', 'inactiva', 'em_integracao', 'suspensa', 'apenas_redireccionamento', 'aguarda_parceria'], label: 'Estado da integração', def: 'apenas_redireccionamento' },
+      parametros: { t: 'text', label: 'Parâmetros suportados' },
+      limitacoes: { t: 'textarea', label: 'Limitações técnicas' },
+      credenciais_necessarias: { t: 'bool', label: 'Exige credenciais (guardadas só em variáveis de ambiente)' },
+      ordem: { t: 'int', label: 'Ordem na lista', def: 50 },
+      ultima_verificacao: { t: 'text', label: 'Última verificação', ro: 1 },
+      ultimo_estado: { t: 'text', label: 'Último estado', ro: 1 },
+      ultimo_tempo_ms: { t: 'int', label: 'Tempo de resposta (ms)', ro: 1 },
+      ultimo_erro: { t: 'text', label: 'Último erro', ro: 1 },
+      ...ativo,
+    },
+    lista: ['nome', 'categoria', 'nivel_integracao', 'estado_integracao', 'ultima_verificacao', 'ultimo_estado', 'ativo'],
+  },
+  terminais: {
+    tipo: 'terminal', titulo: 'Terminais e aeroportos', singular: 'Terminal', campoNome: 'nome', icone: 'pin', semPublico: 1,
+    campos: {
+      nome: { t: 'text', label: 'Nome', req: 1 },
+      transportadora_id: { t: 'ref', ref: 'transportadoras', label: 'Transportadora (vazio = partilhado)' },
+      tipo: { t: 'select', opts: ['rodoviario', 'aeroporto'], label: 'Tipo', def: 'rodoviario' },
+      provincia_id: { t: 'ref', ref: 'provincias', label: 'Província' },
+      municipio: { t: 'text', label: 'Município' },
+      endereco: { t: 'text', label: 'Endereço' },
+      latitude: geo.latitude, longitude: geo.longitude,
+      codigo_operador: { t: 'text', label: 'Código usado pela transportadora' },
+      fonte: { t: 'text', label: 'Fonte (URL)' },
+      ...ativo,
+    },
+    lista: ['nome', 'transportadora_id', 'tipo', 'provincia_id', 'codigo_operador', 'ativo'],
+  },
+  rotas: {
+    tipo: 'rota', titulo: 'Rotas', singular: 'Rota', campoNome: 'via', icone: 'map', semPublico: 1,
+    campos: {
+      transportadora_id: { t: 'ref', ref: 'transportadoras', label: 'Transportadora', req: 1 },
+      origem_provincia_id: { t: 'ref', ref: 'provincias', label: 'Província de origem', req: 1 },
+      destino_provincia_id: { t: 'ref', ref: 'provincias', label: 'Província de destino', req: 1 },
+      terminal_origem_id: { t: 'ref', ref: 'terminais', label: 'Terminal de partida' },
+      terminal_destino_id: { t: 'ref', ref: 'terminais', label: 'Terminal de chegada' },
+      duracao_min: { t: 'int', label: 'Duração (minutos, confirmada)', min: 1 },
+      preco: { t: 'int', label: 'Preço (Kz, confirmado pela transportadora)', min: 0 },
+      horarios: { t: 'list', label: 'Horários de partida confirmados (HH:MM, um por linha)' },
+      classe: { t: 'text', label: 'Tipo de serviço / classe' },
+      condicoes: { t: 'text', label: 'Condições (bagagem, reembolso…)' },
+      via: { t: 'text', label: 'Percurso ou transbordo (ex.: via Ndalatando)' },
+      aviso: { t: 'text', label: 'Aviso (estrada cortada, rota suspensa…)' },
+      fonte_url: { t: 'text', label: 'Fonte dos preços e horários (URL)' },
+      verificado_em: { t: 'date', label: 'Data da confirmação' },
+      ...ativo,
+    },
+    lista: ['transportadora_id', 'origem_provincia_id', 'destino_provincia_id', 'preco', 'verificado_em', 'ativo'],
+  },
   provincias: {
     tipo: 'provincia', titulo: 'Províncias', singular: 'Província', campoNome: 'nome', icone: 'map', semPublico: 1,
     campos: { nome: { t: 'text', label: 'Nome', req: 1 }, capital: { t: 'text', label: 'Capital' } },
@@ -289,7 +351,7 @@ const OBRIG_PARCEIRO = { alojamentos: ['preco_noite'], restaurantes: ['preco_med
 
 // tipo (singular) -> nome da tabela
 const TABELA_DO_TIPO = Object.fromEntries(Object.entries(RECURSOS).map(([t, r]) => [r.tipo, t]));
-const JSON_CAMPOS = new Set(['inclui', 'galeria', 'comodidades', 'idiomas', 'i18n', 'ingredientes', 'aliases']);
+const JSON_CAMPOS = new Set(['inclui', 'galeria', 'comodidades', 'idiomas', 'i18n', 'ingredientes', 'aliases', 'cobertura', 'horarios']);
 const LINGUAS_TRAD = ['en', 'fr', 'es'];
 
 module.exports = { RECURSOS, TABELA_DO_TIPO, JSON_CAMPOS, CAT, LINGUAS_TRAD, TIPOS_NEGOCIO, CAMPOS_PARCEIRO, OBRIG_PARCEIRO };
