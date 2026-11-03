@@ -17,14 +17,18 @@ const guardarPos = () => { try { sessionStorage.setItem('a365_pos', JSON.stringi
 const yangoURL = (lat, lon) => { const p = S.pos; const ini = p ? `start-lat=${p.lat}&start-lon=${p.lon}&` : ''; const fb = encodeURIComponent(`https://yango.com/en_int/order/?${p ? `gfrom=${p.lon},${p.lat}&` : ''}gto=${lon},${lat}&ref=angola365`); return `https://yango.go.link/route?${ini}end-lat=${lat}&end-lon=${lon}&ref=angola365&adj_t=vokme8e_nd9s9z9&lang=pt&adj_deeplink_js=1&adj_fallback=${fb}`; };
 const navURL = (lat, lon) => ({ yango: yangoURL(lat, lon), google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, waze: `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`, osm: `https://www.openstreetmap.org/directions?to=${lat},${lon}` });
 // Botões «Como chegar» e «Chamar táxi»: abrem uma escolha de aplicações
-const dadosLugar = (lat, lon, nome, end) => `data-lat="${lat}" data-lon="${lon}" data-nome="${esc(nome || '')}" data-end="${esc(end || '')}"`;
-const botoesIr = (lat, lon, nome, end) => `<button type="button" class="btn-ir" data-mapas ${dadosLugar(lat, lon, nome, end)}>${ic('map')}Como chegar</button><button type="button" class="btn-taxi" data-taxi ${dadosLugar(lat, lon, nome, end)}>${ic('car')}Chamar táxi</button>`;
+const dadosLugar = (lat, lon, nome, end, prov) => `data-lat="${lat}" data-lon="${lon}" data-nome="${esc(nome || '')}" data-end="${esc(end || '')}" data-prov="${esc(prov || '')}"`;
+// Noutra província que não a da pessoa: autocarros interprovinciais e voos domésticos em vez de táxi
+const outraProvincia = prov => !!(prov && S.pos?.provincia && NORMQ(prov) !== NORMQ(S.pos.provincia));
+const botoesIr = (lat, lon, nome, end, prov) => `<button type="button" class="btn-ir" data-mapas ${dadosLugar(lat, lon, nome, end, prov)}>${ic('map')}Como chegar</button>${outraProvincia(prov)
+  ? `<button type="button" class="btn-taxi btn-viagem" data-viagem ${dadosLugar(lat, lon, nome, end, prov)}>${ic('ticket')}Autocarro ou voo</button>`
+  : `<button type="button" class="btn-taxi" data-taxi ${dadosLugar(lat, lon, nome, end, prov)}>${ic('car')}Chamar táxi</button>`}`;
 function navLinks(it, compacto) {
   const lat = it.latitude ?? it.lat, lon = it.longitude ?? it.lon;
   if (lat == null || lon == null) return compacto ? '' : `<span class="meta coord-falta">${ic('pin')}Localização exacta por confirmar</span>`;
   const dist = S.pos ? distKm(S.pos.lat, S.pos.lon, lat, lon) : null; const nome = it.nome || it.titulo || ''; const end = [it.endereco, it.municipio, it.provincia].filter(Boolean).join(', ');
   return `<div class="nav-links">${dist != null ? `<span class="meta">${ic('compass')}${fmtKm(dist)} em linha recta</span>` : ''}${coordSelo(it, lat, lon)}
-   ${botoesIr(lat, lon, nome, end)}<button type="button" data-mapa-foco="${lat},${lon}">${ic('pin')}Ver no mapa</button></div>`;
+   ${botoesIr(lat, lon, nome, end, it.provincia || it.estadio_provincia)}<button type="button" data-mapa-foco="${lat},${lon}">${ic('pin')}Ver no mapa</button></div>`;
 }
 function coordSelo(it, lat, lon) {
   const e = it.coord_estado; if (!e) return '';
@@ -46,6 +50,37 @@ function abrirMapas(d) {
    <button type="button" data-copiar-coord="${lat}, ${lon}">${ic('check')}<span>${I18N.t('Copiar coordenadas')}</span></button></div>
    ${d.coordFonte ? `<p class="meta" style="margin-top:10px"><a class="fonte" href="${esc(d.coordFonte.split(' ')[0])}" target="_blank" rel="noopener">${ic('globe')}${I18N.t('Ver a origem da localização')}</a></p>` : ''}</div>`);
 }
+// Viagens entre províncias: autocarros interprovinciais e voos domésticos
+// Cidades da pesquisa da NawaBus (bilhetes online de autocarro) e aeroportos servidos pela TAAG, por província
+const NAWABUS = { Luanda: 'Luanda', Benguela: 'Benguela', 'Cuanza Sul': 'Cuanza Sul', Huambo: 'Huambo', 'Huíla': 'Lubango', Malanje: 'Malanje', 'Cuanza Norte': 'Ndalatando', 'Uíge': 'Uíge', Zaire: 'Soyo', Cabinda: 'Cabinda', Namibe: 'Namibe', Bengo: 'Luanda', 'Icolo e Bengo': 'Luanda' };
+const AEROPORTO = { Luanda: 'Luanda', 'Icolo e Bengo': 'Luanda', Bengo: 'Luanda', Cabinda: 'Cabinda', Benguela: 'Catumbela', 'Bié': 'Cuito', 'Lunda Norte': 'Dundo', Huambo: 'Huambo', 'Huíla': 'Lubango', Moxico: 'Luena', Cubango: 'Menongue', Namibe: 'Namibe', Cunene: 'Ondjiva', 'Lunda Sul': 'Saurimo', Zaire: 'Soyo' };
+const AUTOCARROS = [
+  ['Macon', 'https://macontransp.com/', 'Ligações entre as principais cidades'],
+  ['Real Express', 'https://realexpress-wl.praxioluna.com.br/?paginas=venda', 'Venda de bilhetes online'],
+  ['Huambo Expresso', 'https://huamboexpresso.ao/', 'Luanda, Huambo e Planalto Central'],
+  ['Viação Cidrália', 'https://cidralia.com/', 'Reserva por e-mail ou telefone'],
+];
+function abrirViagem(d) {
+  const de = S.pos?.provincia || '', para = d.prov || '';
+  const hoje = new Date(Date.now() + 36e5).toISOString().slice(0, 10);
+  const nw = NAWABUS[de] && NAWABUS[para] && NAWABUS[de] !== NAWABUS[para]
+    ? `https://www.nawabus.ao/search?origin=${encodeURIComponent(NAWABUS[de])}&destination=${encodeURIComponent(NAWABUS[para])}&date=${hoje}&tripType=one-way` : 'https://www.nawabus.ao/';
+  const aDe = AEROPORTO[de], aPara = AEROPORTO[para];
+  const voo = aPara && aDe !== aPara;
+  const gf = `https://www.google.com/travel/flights?q=${encodeURIComponent(`voos de ${aDe || de || 'Luanda'} para ${aPara} Angola`)}&hl=pt-PT`;
+  openModal(`<div class="modal escolha">${modalHead(I18N.t('Como viajar'))}<p class="meta">${de ? `${esc(de)} → ` : ''}<b>${esc(d.nome || para)}</b>${para ? ` · ${esc(para)}` : ''}</p>
+   <h3 class="escolha-tit">${ic('ticket')} ${I18N.t('Autocarros interprovinciais')}</h3>
+   <div class="escolha-grid"><a href="${esc(nw)}" target="_blank" rel="noopener"><span class="taxi-logo" style="background:#0E7C66">N</span><span>NawaBus</span><small>${I18N.t(nw.includes('search') ? 'Bilhetes online · pesquisa já preenchida' : 'Bilhetes online')}</small></a>
+    ${AUTOCARROS.map(([n, u, t]) => `<a href="${esc(u)}" target="_blank" rel="noopener"><span class="taxi-logo" style="background:#1E63C9">${n[0]}</span><span>${n}</span><small>${I18N.t(t)}</small></a>`).join('')}</div>
+   ${para === 'Cabinda' || de === 'Cabinda' ? `<p class="meta aviso-viagem">${I18N.t('Por estrada, Cabinda exige atravessar a República Democrática do Congo (visto e passaporte). O avião é a opção recomendada.')}</p>` : ''}
+   ${voo ? `<h3 class="escolha-tit">${ic('globe')} ${I18N.t('Voos domésticos')}</h3>
+   <div class="escolha-grid"><a href="https://www.taag.com/" target="_blank" rel="noopener"><span class="taxi-logo" style="background:#C8102E">T</span><span>TAAG</span><small>${esc(aDe || 'Luanda')} → ${esc(aPara)}</small></a>
+    <a href="${esc(gf)}" target="_blank" rel="noopener"><span class="taxi-logo" style="background:#4285F4">G</span><span>Google Voos</span><small>${I18N.t('Comparar horários e preços')}</small></a></div>
+    ${aDe && aDe !== 'Luanda' && aPara !== 'Luanda' ? `<p class="meta">${I18N.t('Entre províncias sem ligação directa, os voos da TAAG fazem normalmente escala em Luanda.')}</p>` : ''}` : aPara ? '' : `<p class="meta">${I18N.t('Esta província não tem voos comerciais regulares; o autocarro é a opção.')}</p>`}
+   <h3 class="escolha-tit">${ic('car')} ${I18N.t('De carro')}</h3>
+   <div class="escolha-grid"><button type="button" data-mapas ${dadosLugar(d.lat, d.lon, d.nome, d.end, d.prov)}>${ic('map')}<span>${I18N.t('Como chegar')}</span></button><a href="#viaturas" data-go="viaturas">${ic('car')}<span>${I18N.t('Alugar viatura')}</span></a></div>
+   <p class="meta" style="margin-top:10px">${I18N.t('Horários e preços são definidos por cada operadora: confirme no site antes de viajar.')}</p></div>`);
+}
 // Aplicações de táxi que operam em Angola
 function abrirTaxi(d) {
   const { lat, lon, nome, end } = d; const destino = [nome, end].filter(Boolean).join(', ') || `${lat}, ${lon}`;
@@ -59,16 +94,18 @@ function abrirTaxi(d) {
   ];
   openModal(`<div class="modal escolha">${modalHead(I18N.t('Chamar táxi'))}<p class="meta">${I18N.t('Destino')}: <b>${esc(destino)}</b></p>
    <div class="escolha-grid taxi">${apps.map(a => `<a href="${esc(a.u)}" target="_blank" rel="noopener" data-taxi-app="${a.destino ? '' : 'copiar'}" data-destino="${esc(destino)}"><span class="taxi-logo" style="background:${a.cor}">${a.n[0]}</span><span>${a.n}</span><small>${I18N.t(a.destino ? 'Destino já preenchido' : 'Destino copiado: cole na app')}</small></a>`).join('')}</div>
+   ${!S.pos && d.prov ? `<button type="button" class="link" data-viagem ${dadosLugar(d.lat, d.lon, d.nome, d.end, d.prov)} style="margin-top:10px">${ic('ticket')} ${I18N.t('Vem de outra província? Ver autocarros e voos')}</button>` : ''}
    <p class="meta" style="margin-top:10px">${I18N.t('A Yango abre com o destino preenchido. Na Heetch, Bolt e inDrive o destino é copiado ao tocar, para colar na app (estas apps não publicam ligações directas com destino).')}</p></div>`);
 }
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-mapas],[data-taxi],[data-copiar-coord],[data-taxi-app]'); if (!b) return;
+  const b = e.target.closest('[data-mapas],[data-taxi],[data-viagem],[data-copiar-coord],[data-taxi-app]'); if (!b) return;
   const d = b.dataset;
   if (d.copiarCoord) { navigator.clipboard?.writeText(d.copiarCoord).then(() => toast(I18N.t('Coordenadas copiadas.')), () => toast(d.copiarCoord)); return; }
   if (d.taxiApp === 'copiar') { try { navigator.clipboard?.writeText(d.destino); } catch (er) {} toast(I18N.t('Destino copiado. Cole-o na app de táxi.')); return; }
   if (d.taxiApp !== undefined) return;
   e.preventDefault(); e.stopImmediatePropagation();
-  const dados = { lat: Number(d.lat), lon: Number(d.lon), nome: d.nome, end: d.end, coordFonte: d.coordFonte };
+  const dados = { lat: Number(d.lat), lon: Number(d.lon), nome: d.nome, end: d.end, prov: d.prov, coordFonte: d.coordFonte };
+  if (d.viagem !== undefined) { abrirViagem(dados); return; }
   if (!Number.isFinite(dados.lat)) return;
   if (d.mapas !== undefined) abrirMapas(dados); else abrirTaxi(dados);
 }, true);
@@ -247,7 +284,7 @@ V.futebol = () => {
       <span class="meta">${ic('clock')}Hora de Angola</span>
       ${j.confianca && j.confianca !== 'oficial' ? `<span class="pill ${j.confianca === 'por confirmar' ? 'p-orange' : 'p-blue'}">${j.confianca === 'por confirmar' ? 'Por confirmar' : 'Fonte identificada'}</span>` : j.confianca === 'oficial' ? '<span class="pill p-green">Oficial</span>' : ''}
       ${j.fonte_url ? `<a class="meta fonte" href="${esc(j.fonte_url)}" target="_blank" rel="noopener">${ic('globe')}${esc(j.fonte_nome || hostDe(j.fonte_url))}</a>` : ''}</div>
-     <div class="nav-links">${j.navegacao ? `${botoesIr(j.latitude, j.longitude, j.estadio_nome, j.estadio_cidade)}<button type="button" data-mapa-foco="${j.latitude},${j.longitude}">${ic('pin')}Ver no mapa</button>` : '<span class="meta">Localização do estádio por confirmar</span>'}${j.bilhetes_url ? `<a href="${esc(j.bilhetes_url)}" target="_blank" rel="noopener" class="btn btn-navy">${ic('ticket')}Bilhetes (canal oficial)</a>` : ''}</div>
+     <div class="nav-links">${j.navegacao ? `${botoesIr(j.latitude, j.longitude, j.estadio_nome, j.estadio_cidade, j.estadio_provincia)}<button type="button" data-mapa-foco="${j.latitude},${j.longitude}">${ic('pin')}Ver no mapa</button>` : '<span class="meta">Localização do estádio por confirmar</span>'}${j.bilhetes_url ? `<a href="${esc(j.bilhetes_url)}" target="_blank" rel="noopener" class="btn btn-navy">${ic('ticket')}Bilhetes (canal oficial)</a>` : ''}</div>
     </article>`).join('')}</section>`).join('')}
    ${d?.fontes?.length ? `<div class="card" style="padding:12px 14px;margin-top:14px"><b>Fontes</b><ul class="fontes-lista">${d.fontes.map(f => `<li>${f.url ? `<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.nome)}</a>` : esc(f.nome)}${f.oficial ? ' <span class="pill p-green">oficial</span>' : ''}${f.ultima_sync ? `<small> · actualizado ${dataSQL(f.ultima_sync).toLocaleString(I18N.loc, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}${f.ultimo_estado === 'erro' ? ' (última leitura falhou)' : ''}</small>` : ''}</li>`).join('')}</ul><p class="meta">Só mostramos ligações de bilhetes de canais oficiais. Confirme sempre a hora junto do clube ou da federação.</p></div>` : ''}</div>`;
 };
@@ -293,6 +330,21 @@ function abrirPrato(id) {
    ${rel.length ? rel.map(({ r, fonte }) => `<div class="card" style="padding:10px 12px;margin-top:8px"><b>${esc(r.nome)}</b><p class="meta">${esc(r.endereco || r.local)}</p>${navLinks(r)}${fonte ? `<a class="meta fonte" href="${esc(fonte)}" target="_blank" rel="noopener">${ic('globe')}Porque está aqui: ${esc(hostDe(fonte))}</a>` : ''}</div>`).join('') : '<p class="meta">Ainda não confirmámos restaurantes que sirvam este prato. Pergunte à ENDA por sugestões.</p>'}
    <button class="btn btn-ghost" style="margin-top:12px" data-k-explain="prato:${p.id}">${ic('chat')} ENDA explica em voz alta</button></div>`);
 }
+
+/* ---------- menu lateral no telemóvel ---------- */
+function menu(abrir) {
+  const sh = document.querySelector('.shell'); if (!sh) return;
+  sh.classList.toggle('menu-aberto', abrir); document.body.classList.toggle('menu-aberto', abrir);
+  document.querySelectorAll('[data-menu]').forEach(b => b.setAttribute('aria-expanded', abrir));
+  if (abrir) document.querySelector('#menu-lateral .nav button')?.focus();
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-menu]')) { e.preventDefault(); e.stopImmediatePropagation(); menu(true); return; }
+  if (e.target.closest('[data-menu-fechar]')) { e.stopImmediatePropagation(); menu(false); return; }
+  if (e.target.closest('#menu-lateral [data-go], #menu-lateral a')) { document.body.classList.remove('menu-aberto'); }
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('menu-aberto')) menu(false); });
+window.addEventListener('hashchange', () => document.body.classList.remove('menu-aberto'));
 
 /* ---------- acções ---------- */
 document.addEventListener('click', async e => {

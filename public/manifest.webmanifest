@@ -1,11 +1,25 @@
 {
-  "name": "Angola 365º",
+  "id": "/",
+  "name": "Angola 365º — Turismo em Angola",
   "short_name": "Angola 365º",
-  "description": "Descubra, planeie e reserve experiências turísticas em Angola.",
-  "start_url": "/",
+  "description": "Descubra, planeie e reserve turismo em Angola com a ENDA AI: destinos, alojamentos, restaurantes, eventos, futebol e roteiros.",
+  "start_url": "/?origem=app",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0F1222",
   "theme_color": "#C8102E",
   "lang": "pt-AO",
-  "icons": [{ "src": "/img/sigaf.webp", "sizes": "192x192", "type": "image/webp" }]
+  "dir": "ltr",
+  "categories": ["travel", "lifestyle", "navigation"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Perto de mim", "url": "/#perto", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Mapa de Angola", "url": "/#mapa", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Eventos", "url": "/#eventos", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
 }

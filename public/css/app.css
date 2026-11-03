@@ -634,3 +634,15 @@ span.ilustr{pointer-events:none}
 .k-acts .btn-ir,.k-acts .btn-taxi{display:inline-flex;align-items:center;gap:4px}
 
 .lembrar{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer}.lembrar input{accent-color:var(--red);width:16px;height:16px}
+
+/* Menu lateral no telemóvel (botão ☰ do início) */
+.side-fechar,.side-fundo{display:none}
+@media (max-width:900px){
+  .shell.menu-aberto .side{display:flex;position:fixed;inset:0 auto 0 0;width:min(86vw,320px);height:100dvh;z-index:60;box-shadow:8px 0 30px rgba(0,0,0,.4);animation:menuEntra .2s ease-out}
+  .shell.menu-aberto .side-fundo{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:59}
+  .shell.menu-aberto .side-fechar{display:grid;place-items:center;position:absolute;top:14px;right:12px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.1);color:#fff}
+  body.menu-aberto{overflow:hidden}
+}
+@keyframes menuEntra{from{transform:translateX(-100%)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){.shell.menu-aberto .side{animation:none}}
+.escolha-tit{font-size:14px;margin:14px 0 8px;display:flex;align-items:center;gap:6px}.aviso-viagem{background:#FFF5DB;color:#8a5a00;padding:8px 10px;border-radius:8px}.btn-viagem{background:#1E63C9!important;color:#fff!important}
