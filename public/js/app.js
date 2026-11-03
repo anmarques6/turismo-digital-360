@@ -330,7 +330,7 @@ function loginView(mode = 'in') {
     ${mode === 'up' ? `<label class="inp"><span class="ii">${ic('user')}</span><input id="l-nome" name="nome" placeholder="Nome completo" autocomplete="name" required></label><label class="inp"><span class="ii">${ic('phone')}</span><input id="l-tel" name="telefone" type="tel" placeholder="Telemóvel (opcional)" autocomplete="tel"></label>` : ''}
     <label class="inp"><span class="ii">${ic('user')}</span><input id="l-email" name="email" type="${mode === 'up' ? 'email' : 'text'}" placeholder="${mode === 'up' ? 'E-mail' : 'E-mail ou telefone'}" autocomplete="username" required></label>
     <label class="inp"><span class="ii">${ic('lock')}</span><input id="l-pass" name="pass" type="password" placeholder="${mode === 'up' ? 'Senha (mín. 8, com letras e números)' : 'Senha'}" autocomplete="${mode === 'up' ? 'new-password' : 'current-password'}" required><button type="button" data-showpass aria-label="Mostrar senha" style="color:#888">${ic('eye')}</button></label>
-    ${mode === 'in' ? `<div class="row"><span></span><button type="button" data-forgot>Esqueceu a senha?</button></div>` : ''}
+    ${mode === 'in' ? `<div class="row"><label class="lembrar"><input type="checkbox" name="lembrar" checked> Manter sessão iniciada</label><button type="button" data-forgot>Esqueceu a senha?</button></div>` : ''}
     <p class="err" id="l-err" hidden></p>
     <button class="btn btn-red" type="submit" style="justify-content:space-between;border-radius:12px">${mode === 'in' ? 'Entrar' : 'Criar conta'} <span style="color:var(--gold)">→</span></button>
     <div class="or">${mode === 'in' ? 'ou entre com' : 'ou crie conta com'}</div>
@@ -345,8 +345,10 @@ function loginView(mode = 'in') {
 async function carregarCatalogo() { S.cat = await API.get('/api/catalogo?lang=' + I18N.lang); }
 async function carregarConta() {
   const [eu, favs] = await Promise.all([API.get('/api/auth/eu'), API.get('/api/favoritos')]);
-  S.user = eu.utilizador; S.favs = new Set(favs.map(f => f.tipo + ':' + f.item_id));
-  Inatividade.ligar(fimPorInatividade, S.inatividade);
+  S.user = eu.utilizador; S.favs = new Set(favs.map(f => f.tipo + ':' + f.item_id)); S.sessao = eu.sessao || {};
+  // Sessão que fica aberta (como no Facebook): sem fim por inactividade. Administradores e quem desmarcou a opção: 60 s.
+  if (!S.sessao.persistente) Inatividade.ligar(fimPorInatividade, S.sessao.inatividade_s || S.inatividade); else Inatividade.desligar();
+  Push.activar(false);
   carregarNotifs(); API.get('/api/reservas').then(r => { S.reservas = r; }).catch(() => {});
 }
 async function carregarNotifs() { try { const n = await API.get('/api/notificacoes'); S.notifs = n.lista; S.naoLidas = n.nao_lidas; updateBell(); sysNotifyNovas(); } catch (e) {} }
@@ -524,7 +526,7 @@ document.addEventListener('click', async e => {
   if (ds.recarregar !== undefined) { location.reload(); return; }
   if (ds.showpass !== undefined) { const p = document.getElementById('l-pass'); p.type = p.type === 'password' ? 'text' : 'password'; return; }
   if (ds.forgot !== undefined) { const er = document.getElementById('l-err'); er.hidden = false; er.style.color = 'var(--green)'; er.textContent = 'Para recuperar a senha contacte o suporte: +244 926 239 938 ou projectos@sigafangola.ao.'; return; }
-  if (ds.logout !== undefined) { try { await API.post('/api/auth/sair'); } catch (err) {} sairLocal(); return; }
+  if (ds.logout !== undefined) { try { await Push.cancelar(); await API.post('/api/auth/sair'); } catch (err) {} sairLocal(); return; }
   if (ds.themeToggle !== undefined) { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; prefs.set('theme', r.dataset.theme); toast(dark ? 'Tema claro activado' : 'Tema escuro activado'); return; }
 });
 document.addEventListener('keydown', e => {
@@ -554,7 +556,7 @@ document.addEventListener('submit', async e => {
     try {
       const r = f.dataset.login === 'up'
         ? await API.post('/api/auth/registar', { nome: fd.get('nome'), email: fd.get('email'), telefone: fd.get('telefone'), senha: fd.get('pass'), idioma: I18N.lang })
-        : await API.post('/api/auth/entrar', { email: fd.get('email'), senha: fd.get('pass') });
+        : await API.post('/api/auth/entrar', { email: fd.get('email'), senha: fd.get('pass'), lembrar: fd.get('lembrar') === 'on' });
       API.setToken(r.token); await carregarConta(); location.hash = 'inicio'; await render(); boasVindas();
       toast(f.dataset.login === 'up' ? 'Conta criada. Bem-vindo(a)!' : 'Sessão iniciada');
     } catch (err) { er.hidden = false; er.textContent = err.message; btn.disabled = false; }

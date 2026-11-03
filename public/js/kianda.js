@@ -384,7 +384,7 @@ document.addEventListener('click', e => {
   if (d.kRemind) { const it = getItem(d.kRemind); closeModal(); if (!K.open) kOpen(); if (it) criarLembrete(it); return parar(); }
   if (d.kGo) { const it = getItem(d.kGo); if (it?.k === 'destino') { S.f.q_dest = it.nome; S.f.dcat = 'Todos'; go('destinos'); } else if (it?.k === 'prato') go('gastronomia'); return parar(); }
   if (d.kSend) { enviarConvite(d.kSend); return parar(); }
-  if (d.kPerm !== undefined) { if ('Notification' in window) { Notification.requestPermission().then(p => { toast(t(p === 'granted' ? 'Notificações ativadas' : 'As notificações não foram autorizadas')); if (p === 'granted') new Notification('Angola 365º', { body: t('A ENDA vai avisá-lo de eventos e sugestões.'), icon: '/img/sigaf.webp' }); closeModal(); }).catch(() => toast('Este navegador não permite notificações aqui.')); } else toast('Este navegador não suporta notificações.'); return parar(); }
+  if (d.kPerm !== undefined) { Push.activar(true).then(r => { closeModal(); toast(t({ ok: 'Notificações ativadas: vai recebê-las mesmo com o site fechado.', negado: 'As notificações não foram autorizadas. Pode autorizá-las nas definições do navegador.', indisponivel: 'Este navegador não permite notificações. No iPhone, adicione primeiro o site ao ecrã principal.', 'sem-servidor': 'Notificações ativadas neste ecrã.', erro: 'Não foi possível ativar as notificações. Tente de novo.' }[r] || 'Notificações ativadas')); }); return parar(); }
   if (d.kCloseToast !== undefined) { btn.closest('.k-toast')?.remove(); return parar(); }
   if (d.notifs !== undefined) { abrirNotifs(); return parar(); }
   if (d.kOpen !== undefined) { closeModal(); kOpen(); return parar(); }

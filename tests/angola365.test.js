@@ -7,6 +7,8 @@ const path = require('node:path');
 const { criarPool } = require('../src/pg');
 const { classificar } = require('../src/enda');
 const { distanciaKm } = require('../src/turismo');
+const push = require('../src/push');
+const VAPID = push.gerarChaves();
 
 const PORT = 4100 + Math.floor(Math.random() * 90);
 const BASE = process.env.TEST_DATABASE_URL;
@@ -26,7 +28,7 @@ const LUANDA = { lat: -8.8159, lon: 13.2306 }; // Marginal de Luanda
 
 before(async () => {
   await adminPg.query(`CREATE DATABASE ${NOME_BD}`);
-  srv = spawn(process.execPath, ['--require', path.join(__dirname, 'fetch-falso.js'), path.join(__dirname, '..', 'server.js')], { env: { ...process.env, PORT, DATABASE_URL: urlTeste, AI_GATEWAY_API_KEY: 'chave-teste', LIMITE_TENTATIVAS: '200', ENDA_LIMITE: '500' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  srv = spawn(process.execPath, ['--require', path.join(__dirname, 'fetch-falso.js'), path.join(__dirname, '..', 'server.js')], { env: { ...process.env, PORT, DATABASE_URL: urlTeste, AI_GATEWAY_API_KEY: 'chave-teste', VAPID_PUBLICA: VAPID.publica, VAPID_PRIVADA: VAPID.privada, LIMITE_TENTATIVAS: '200', ENDA_LIMITE: '500' }, stdio: ['ignore', 'pipe', 'inherit'] });
   await new Promise((ok, falha) => { srv.stdout.on('data', d => { if (String(d).includes('a correr')) ok(); }); setTimeout(() => falha(new Error('servidor não arrancou')), 20000); });
   cliente = (await req('POST', '/api/auth/entrar', { email: 'visitante@turismo360.ao', senha: 'angola360' })).j.token;
   admin = (await req('POST', '/api/auth/entrar', { email: 'admin@turismo360.ao', senha: 'admin360' })).j.token;
@@ -297,4 +299,32 @@ test('J2 nome oficial «Quedas de Calandula» e experiências com localização'
   const en = (await req('GET', '/api/catalogo?lang=en')).j.destinos.find(d => d.id === c.destinos.find(x => x.nome === 'Quedas de Calandula').id);
   assert.ok(!/Kalandula/.test(en.nome));
   const r = await req('GET', '/api/cron/lugares'); assert.equal(r.status, 200);
+});
+
+// ---------- K. Notificações push ----------
+test('K1 cifra Web Push (RFC 8291) decifrável pelo navegador', () => {
+  const crypto = require('node:crypto');
+  const ua = crypto.createECDH('prime256v1'); ua.generateKeys(); const auth = crypto.randomBytes(16);
+  const msg = push.cifrar('{"titulo":"Olá"}', ua.getPublicKey().toString('base64url'), auth.toString('base64url'));
+  const sal = msg.subarray(0, 16), idlen = msg[20], as = msg.subarray(21, 21 + idlen), corpo = msg.subarray(21 + idlen);
+  const h = (k, d) => crypto.createHmac('sha256', k).update(d).digest();
+  const ikm = h(h(auth, ua.computeSecret(as)), Buffer.concat([Buffer.from('WebPush: info\0'), ua.getPublicKey(), as, Buffer.from([1])]));
+  const prk = h(sal, ikm);
+  const d = crypto.createDecipheriv('aes-128-gcm', h(prk, Buffer.from('Content-Encoding: aes128gcm\0\x01', 'binary')).subarray(0, 16), h(prk, Buffer.from('Content-Encoding: nonce\0\x01', 'binary')).subarray(0, 12));
+  d.setAuthTag(corpo.subarray(-16));
+  const claro = Buffer.concat([d.update(corpo.subarray(0, -16)), d.final()]);
+  assert.equal(claro.subarray(0, -1).toString(), '{"titulo":"Olá"}'); assert.equal(claro.at(-1), 2);
+});
+test('K2 subscrição de push: validada, guardada e usada nas notificações; subscrições mortas são apagadas', async () => {
+  assert.equal((await req('GET', '/api/push/chave')).j.chave, VAPID.publica);
+  const crypto = require('node:crypto'); const ua = crypto.createECDH('prime256v1'); ua.generateKeys();
+  const keys = { p256dh: ua.getPublicKey().toString('base64url'), auth: crypto.randomBytes(16).toString('base64url') };
+  assert.equal((await req('POST', '/api/push/subscrever', { endpoint: 'https://malicioso.exemplo/x', keys }, cliente)).status, 400);
+  assert.equal((await req('POST', '/api/push/subscrever', { endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys }, cliente)).status, 200);
+  assert.equal((await req('POST', '/api/push/subscrever', { endpoint: 'https://fcm.googleapis.com/fcm/send/gone', keys }, cliente)).status, 200);
+  assert.equal((await req('POST', '/api/notificacoes', { titulo: 'Teste push', corpo: 'Olá' }, cliente)).status, 200);
+  await new Promise(r => setTimeout(r, 600));
+  const pg = criarPool(urlTeste, 1);
+  const L = (await pg.query("SELECT endpoint FROM push_subscricoes")).rows.map(x => x.endpoint); pg.fechar();
+  assert.deepEqual(L, ['https://fcm.googleapis.com/fcm/send/abc'], 'a subscrição que respondeu 410 foi removida');
 });

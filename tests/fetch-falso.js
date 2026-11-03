@@ -36,6 +36,8 @@ globalThis.fetch = async (url, op) => {
     return dizer('Olá, sou a ENDA AI.');
   }
   if (u.startsWith('https://www.wikidata.org/w/api.php')) return json({ entities: { Q999: { claims: { P18: [{ mainsnak: { datavalue: { value: 'Resort Teste Namibe.jpg' } } }] } } } });
+  // Serviço de push do navegador (simulado): guarda o que recebeu; o endpoint «/gone» já não existe
+  if (u.startsWith('https://fcm.googleapis.com/fcm/send/')) { (globalThis.__push ||= []).push({ u, h: op.headers, n: op.body.length }); return new Response('', { status: u.endsWith('/gone') ? 410 : 201 }); }
   // OpenStreetMap (Overpass): o 1.º servidor falha, o 2.º responde
   if (u.startsWith('https://maps.mail.ru/osm/')) return new Response('Gateway Timeout', { status: 504 });
   if (u.startsWith('https://overpass.kumi.systems/')) return json({ elements: [

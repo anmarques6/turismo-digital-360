@@ -804,3 +804,11 @@ I18N.dic([
   ['Coordenadas copiadas.', 'Coordinates copied.', 'Coordonnées copiées.', 'Coordenadas copiadas.'], ['Destino copiado. Cole-o na app de táxi.', 'Destination copied. Paste it in the taxi app.', 'Destination copiée. Collez-la dans l’app de taxi.', 'Destino copiado. Péguelo en la app de taxi.'],
   ['Outra app do telemóvel', 'Other phone app', 'Autre app du téléphone', 'Otra app del teléfono'], ['Apple Mapas', 'Apple Maps', 'Plans d’Apple', 'Apple Mapas'],
 ]);
+I18N.dic([
+  ['Manter sessão iniciada', 'Keep me signed in', 'Rester connecté', 'Mantener la sesión iniciada'],
+  ['Notificações ativadas: vai recebê-las mesmo com o site fechado.', 'Notifications on: you will get them even with the site closed.', 'Notifications activées : vous les recevrez même site fermé.', 'Notificaciones activadas: las recibirá incluso con el sitio cerrado.'],
+  ['As notificações não foram autorizadas. Pode autorizá-las nas definições do navegador.', 'Notifications were not allowed. You can allow them in your browser settings.', 'Les notifications n’ont pas été autorisées. Autorisez-les dans les réglages du navigateur.', 'No se autorizaron las notificaciones. Puede autorizarlas en los ajustes del navegador.'],
+  ['Este navegador não permite notificações. No iPhone, adicione primeiro o site ao ecrã principal.', 'This browser does not allow notifications. On iPhone, first add the site to your Home Screen.', 'Ce navigateur ne permet pas les notifications. Sur iPhone, ajoutez d’abord le site à l’écran d’accueil.', 'Este navegador no permite notificaciones. En iPhone, añada primero el sitio a la pantalla de inicio.'],
+  ['Notificações ativadas neste ecrã.', 'Notifications on for this screen.', 'Notifications activées sur cet écran.', 'Notificaciones activadas en esta pantalla.'],
+  ['Não foi possível ativar as notificações. Tente de novo.', 'Could not turn on notifications. Try again.', 'Impossible d’activer les notifications. Réessayez.', 'No se pudieron activar las notificaciones. Inténtelo de nuevo.'],
+]);

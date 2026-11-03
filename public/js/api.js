@@ -53,3 +53,27 @@ const Inatividade = (() => {
   function desligar() { ligado = false; if (aviso) { aviso.remove(); aviso = null; } }
   return { ligar, desligar, marcar, get limite() { return limite; } };
 })();
+
+/* Notificações no telemóvel/computador (Web Push): regista o service worker e a subscrição da conta */
+const Push = (() => {
+  const suportado = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const b64 = s => { const p = '='.repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(r, c => c.charCodeAt(0)); };
+  // pedir = true: pede autorização (só depois de um toque da pessoa); false: só subscreve se já estiver autorizado
+  async function activar(pedir) {
+    if (!suportado() || !API.token) return 'indisponivel';
+    if (Notification.permission === 'denied') return 'negado';
+    if (Notification.permission !== 'granted') { if (!pedir) return 'por-pedir'; if (await Notification.requestPermission() !== 'granted') return 'negado'; }
+    try {
+      const { chave } = await API.get('/api/push/chave'); if (!chave) return 'sem-servidor';
+      const reg = await navigator.serviceWorker.register('/sw.js'); await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(chave) });
+      await API.post('/api/push/subscrever', sub.toJSON()); return 'ok';
+    } catch (e) { return 'erro'; }
+  }
+  async function cancelar() {
+    if (!suportado()) return;
+    try { const reg = await navigator.serviceWorker.getRegistration(); const sub = reg && await reg.pushManager.getSubscription(); if (sub) { await API.post('/api/push/cancelar', { endpoint: sub.endpoint }).catch(() => {}); await sub.unsubscribe(); } } catch (e) {}
+  }
+  return { activar, cancelar, suportado };
+})();

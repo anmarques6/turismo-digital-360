@@ -41,22 +41,32 @@ function traduzir(o, lang) {
 }
 const publicoUser = u => u && ({ id: u.id, nome: u.nome, email: u.email, telefone: u.telefone, papel: u.papel, saldo: u.saldo, pontos: u.pontos, criado_em: u.criado_em, idioma: u.idioma, senha_definida: u.senha_definida });
 const utilizador = (id, d = { get }) => d.get('SELECT * FROM utilizadores WHERE id = ?', id);
-const notificar = (d, uid, titulo, corpo, icone = 'bell', destino = null) =>
-  d.run('INSERT INTO notificacoes (utilizador_id, titulo, corpo, icone, destino) VALUES (?,?,?,?,?)', uid, titulo, corpo, icone, destino);
+// Guarda a notificação e envia-a também para o telemóvel/computador da pessoa (Web Push), mesmo com o site fechado
+const notificar = async (d, uid, titulo, corpo, icone = 'bell', destino = null) => {
+  const r = await d.run('INSERT INTO notificacoes (utilizador_id, titulo, corpo, icone, destino) VALUES (?,?,?,?,?)', uid, titulo, corpo, icone, destino);
+  setImmediate(() => require('./push').enviarAoUtilizador({ all, run }, uid, { titulo, corpo, url: destino ? '/#' + destino : '/' }).catch(() => {}));
+  return r;
+};
 const DB = { get, all, run };
 
 // ---------- autenticação ----------
-// Sessões: terminam após INATIVIDADE_S segundos sem pedidos (por omissão 60 s) e, no máximo, ao fim de SESSAO_HORAS.
+// Sessões:
+//  · clientes com «Manter sessão iniciada» (por omissão): a sessão fica aberta, como no Facebook, e renova-se sozinha
+//    enquanto a pessoa a usa (SESSAO_CLIENTE_DIAS, 90 dias desde o último uso); termina só ao sair ou ao mudar a senha;
+//  · administradores, ou quem desmarca a opção: terminam após INATIVIDADE_S segundos sem uso (60 s) e no máximo ao fim de SESSAO_HORAS.
 const INATIVIDADE_S = Math.max(10, Number(process.env.SESSAO_INATIVIDADE_S || 60));
 const SESSAO_HORAS = 12;
+const SESSAO_CLIENTE_DIAS = Math.max(1, Number(process.env.SESSAO_CLIENTE_DIAS || 90));
 const MAX_FALHAS = 5, BLOQUEIO_MIN = 15;
 const sha = t => crypto.createHash('sha256').update(t).digest('hex');
 const sqlParaMs = s => Date.parse(String(s).replace(' ', 'T') + 'Z');
 const msParaSQL = ms => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
-async function criarSessao(uid, agente) {
+async function criarSessao(uid, agente, lembrar = true) {
   const token = crypto.randomBytes(32).toString('base64url');
-  await run('DELETE FROM sessoes WHERE utilizador_id = ? AND (expira_em <= ? OR ultimo_uso <= ?)', uid, agoraSQL(), msParaSQL(Date.now() - (INATIVIDADE_S + 30) * 1000));
-  await run('INSERT INTO sessoes (token_hash, utilizador_id, expira_em, agente, ultimo_uso) VALUES (?,?,?,?,?)', sha(token), uid, msParaSQL(Date.now() + SESSAO_HORAS * 36e5), str(agente, 200), agoraSQL());
+  const papel = (await get('SELECT papel FROM utilizadores WHERE id = ?', uid))?.papel;
+  const persistente = lembrar !== false && papel !== 'admin' ? 1 : 0;
+  await run('DELETE FROM sessoes WHERE utilizador_id = ? AND (expira_em <= ? OR (persistente = 0 AND ultimo_uso <= ?))', uid, agoraSQL(), msParaSQL(Date.now() - (INATIVIDADE_S + 30) * 1000));
+  await run('INSERT INTO sessoes (token_hash, utilizador_id, expira_em, agente, ultimo_uso, persistente) VALUES (?,?,?,?,?,?)', sha(token), uid, msParaSQL(Date.now() + (persistente ? SESSAO_CLIENTE_DIAS * 864e5 : SESSAO_HORAS * 36e5)), str(agente, 200), agoraSQL(), persistente);
   await run('UPDATE utilizadores SET ultimo_acesso = ?, falhas_entrada = 0, bloqueado_ate = NULL WHERE id = ?', agoraSQL(), uid);
   return token;
 }
@@ -65,15 +75,18 @@ async function auth(req) {
   const token = h.startsWith('Bearer ') ? h.slice(7) : null;
   if (token && token.length < 200) {
     req.tokenHash = sha(token);
-    const r = await get(`SELECT u.*, s.ultimo_uso AS _uso FROM sessoes s JOIN utilizadores u ON u.id = s.utilizador_id WHERE s.token_hash = ? AND s.expira_em > ? AND u.ativo = 1`, req.tokenHash, agoraSQL());
+    const r = await get(`SELECT u.*, s.ultimo_uso AS _uso, s.persistente AS _pers, s.expira_em AS _exp FROM sessoes s JOIN utilizadores u ON u.id = s.utilizador_id WHERE s.token_hash = ? AND s.expira_em > ? AND u.ativo = 1`, req.tokenHash, agoraSQL());
     if (r) {
       // margem de 30 s para o sinal de actividade enviado pelo site (que termina a sessão aos INATIVIDADE_S)
-      if (Date.now() - sqlParaMs(r._uso) > (INATIVIDADE_S + 30) * 1000) {
+      if (!r._pers && Date.now() - sqlParaMs(r._uso) > (INATIVIDADE_S + 30) * 1000) {
         await run('DELETE FROM sessoes WHERE token_hash = ?', req.tokenHash);
         erro(401, 'A sessão terminou por inactividade. Entre novamente.', { inatividade: true });
       }
-      await run('UPDATE sessoes SET ultimo_uso = ? WHERE token_hash = ?', agoraSQL(), req.tokenHash);
-      delete r._uso; req.user = r;
+      // sessão persistente: renova o prazo (no máximo uma vez por dia)
+      if (r._pers && sqlParaMs(r._exp) - Date.now() < (SESSAO_CLIENTE_DIAS - 1) * 864e5) await run('UPDATE sessoes SET ultimo_uso = ?, expira_em = ? WHERE token_hash = ?', agoraSQL(), msParaSQL(Date.now() + SESSAO_CLIENTE_DIAS * 864e5), req.tokenHash);
+      else await run('UPDATE sessoes SET ultimo_uso = ? WHERE token_hash = ?', agoraSQL(), req.tokenHash);
+      req.sessao = { persistente: !!r._pers, inatividade_s: r._pers ? null : INATIVIDADE_S };
+      delete r._uso; delete r._pers; delete r._exp; req.user = r;
     }
   }
   if (!req.user) erro(401, 'Sessão expirada. Entre novamente.');
@@ -130,13 +143,13 @@ api.post('/api/auth/entrar', corpo, async req => {
     erro(401, 'E-mail ou senha incorrectos.');
   }
   if (!u.ativo) erro(403, 'Esta conta está suspensa. Contacte o suporte.');
-  return { token: await criarSessao(u.id, req.headers['user-agent']), utilizador: publicoUser(u) };
+  return { token: await criarSessao(u.id, req.headers['user-agent'], req.dados.lembrar !== false), utilizador: publicoUser(u) };
 });
 
 // Mantém a sessão viva enquanto o utilizador está activo no ecrã (o site chama isto a cada ~25 s de actividade)
 api.post('/api/auth/ativo', async req => { await auth(req); return { ok: true, inatividade_s: INATIVIDADE_S }; });
 api.post('/api/auth/sair', async req => { await auth(req); await run('DELETE FROM sessoes WHERE token_hash = ?', req.tokenHash); });
-api.get('/api/auth/eu', async req => { await auth(req); return { utilizador: publicoUser(req.user) }; });
+api.get('/api/auth/eu', async req => { await auth(req); return { utilizador: publicoUser(req.user), sessao: req.sessao }; });
 api.patch('/api/auth/eu', corpo, async req => {
   await auth(req); const b = req.dados, u = req.user;
   const nome = b.nome !== undefined ? str(b.nome, 120) : u.nome;
@@ -444,6 +457,17 @@ api.get('/api/cron/lembretes', async req => {
   return { entregues: await processarLembretes() };
 });
 
+// ---------- notificações no telemóvel/computador (Web Push) ----------
+api.get('/api/push/chave', async () => ({ chave: require('./push').chaves()?.publica || null }));
+api.post('/api/push/subscrever', corpo, async req => {
+  await auth(req); const b = req.dados || {}; const P = require('./push');
+  const ep = str(b.endpoint, 600), p256dh = str(b.keys?.p256dh, 200), au = str(b.keys?.auth, 100);
+  if (!P.ENDPOINT_OK.test(ep) || !p256dh || !au) erro(400, 'Subscrição de notificações inválida.');
+  await run(`INSERT INTO push_subscricoes (utilizador_id, endpoint, p256dh, auth, agente) VALUES (?,?,?,?,?)
+    ON CONFLICT (endpoint) DO UPDATE SET utilizador_id = EXCLUDED.utilizador_id, p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth`, req.user.id, ep, p256dh, au, str(req.headers['user-agent'], 200));
+  return { ok: true };
+});
+api.post('/api/push/cancelar', corpo, async req => { await auth(req); await run('DELETE FROM push_subscricoes WHERE endpoint = ? AND utilizador_id = ?', str(req.dados?.endpoint, 600), req.user.id); });
 api.get('/api/notificacoes', async req => {
   await auth(req); await processarLembretes(req.user.id);
   return { nao_lidas: (await get('SELECT COUNT(*) AS n FROM notificacoes WHERE utilizador_id = ? AND lida = 0', req.user.id)).n, lista: await all('SELECT * FROM notificacoes WHERE utilizador_id = ? ORDER BY criado_em DESC, id DESC LIMIT 40', req.user.id) };

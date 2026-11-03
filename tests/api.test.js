@@ -250,13 +250,21 @@ test('segurança: senha forte, bloqueio após 5 falhas, fim de sessão por inact
   let r = await req('POST', '/api/auth/entrar', { email, senha: 'abc12345' });
   assert.equal(r.status, 429); assert.match(r.j.erro, /bloqueada temporariamente/);
   // inactividade: simula 2 minutos sem pedidos
+  // administrador: sessão termina por inactividade; cliente com «Manter sessão iniciada»: fica aberta
   r = await req('POST', '/api/auth/entrar', { email: 'admin@turismo360.ao', senha: 'admin360' });
   const tk = r.j.token; assert.ok(tk, JSON.stringify(r.j));
+  const e2 = `manter${Date.now()}@exemplo.ao`; await req('POST', '/api/auth/registar', { nome: 'Cliente Manter', email: e2, senha: 'abc12345' });
+  const cli = (await req('POST', '/api/auth/entrar', { email: e2, senha: 'abc12345' })).j.token;
+  const curta = (await req('POST', '/api/auth/entrar', { email: e2, senha: 'abc12345', lembrar: false })).j.token;
+  assert.equal((await req('GET', '/api/auth/eu', null, cli)).j.sessao.persistente, true);
+  assert.equal((await req('GET', '/api/auth/eu', null, tk)).j.sessao.persistente, false);
   assert.equal((await req('POST', '/api/auth/ativo', null, tk)).j.inatividade_s, 60);
   const bd = criarPool(urlTeste, 1);
   await bd.query("UPDATE sessoes SET ultimo_uso = to_char((now() AT TIME ZONE 'UTC') - interval '2 minutes', 'YYYY-MM-DD HH24:MI:SS')");
   bd.fechar();
   r = await req('GET', '/api/auth/eu', null, tk);
   assert.equal(r.status, 401); assert.equal(r.j.inatividade, true);
+  assert.equal((await req('GET', '/api/auth/eu', null, curta)).status, 401, 'sem «manter sessão» termina por inactividade');
+  assert.equal((await req('GET', '/api/auth/eu', null, cli)).status, 200, 'cliente com sessão persistente continua ligado');
   assert.equal((await req('GET', '/api/auth/eu', null, tk)).status, 401);
 });

@@ -632,3 +632,5 @@ span.ilustr{pointer-events:none}
 .escolha-grid small{font-weight:500;font-size:11px;color:var(--muted)}
 .taxi-logo{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;font-weight:800;color:#141414}
 .k-acts .btn-ir,.k-acts .btn-taxi{display:inline-flex;align-items:center;gap:4px}
+
+.lembrar{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer}.lembrar input{accent-color:var(--red);width:16px;height:16px}
