@@ -214,7 +214,7 @@ function registar({ api, auth, admin, corpo, auditar, listarPublico, notificar }
     for (const t of T) {
       const l = ligacao(t, { origem_provincia: 'Luanda', destino_provincia: t.categoria === 'aereo' ? 'Huíla' : 'Benguela', data_ida: amanha, tipo_viagem: 'ida', passageiros: 1 });
       if (!l.url) continue;
-      const t0 = Date.now(); let st = null, er = null;
+      const t0 = Date.now(); let st = null, er = null; // nota: a MACON responde 403 a servidores de alguns países (bloqueio geográfico, não avaria)
       try { const r = await fetch(l.url, { method: 'GET', redirect: 'follow', headers: { 'User-Agent': 'Angola365-verificacao/1.0 (+https://turismo-digital-360.vercel.app)' }, signal: AbortSignal.timeout(15000) }); st = r.status; } catch (e) { er = str(e.message, 200); }
       const ms = Date.now() - t0;
       await run('INSERT INTO verificacoes_transporte (transportadora_id, url, estado_http, tempo_ms, erro) VALUES (?,?,?,?,?)', t.id, l.url.slice(0, 500), st, ms, er);

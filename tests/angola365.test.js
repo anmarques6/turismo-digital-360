@@ -424,7 +424,7 @@ test('M1 Luanda → Quedas de Calandula: interprovincial, autocarros com ligaç�
   assert.equal(r.j.origem.provincia, 'Luanda'); assert.equal(r.j.destino.provincia, 'Malanje'); assert.equal(r.j.interprovincial, true);
   assert.equal(r.j.titulo, 'Como viajar de Luanda para Malanje?');
   const nw = r.j.rodoviario.find(o => o.nome === 'NawaBus'); assert.equal(nw.modo, 'preenchido'); assert.equal(nw.preco, null, 'sem preço inventado'); assert.deepEqual(nw.horarios, []);
-  const mc = r.j.rodoviario.find(o => o.nome === 'MACON'); assert.equal(mc.modo, 'preenchido_a_confirmar');
+  const mc = r.j.rodoviario.find(o => o.nome === 'MACON'); assert.equal(mc.modo, 'preenchido');
   assert.ok(!r.j.rodoviario.some(o => o.nome === 'Huambo Expresso'), 'Huambo Expresso não indica Malanje na cobertura');
   assert.ok(r.j.aereo.length === 0, 'Malanje não tem voos domésticos registados');
   assert.ok(r.j.carro.possivel && r.j.carro.estrada_km_estimada > 250 && r.j.carro.consumo_litros_estimado > 0);

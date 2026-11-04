@@ -1,0 +1,63 @@
+# App iPhone do Angola 365º — compila num Mac da GitHub.
+# 1) Sempre: compila para o simulador, abre a app num iPhone simulado e guarda uma captura de ecrã (prova de que funciona).
+# 2) Quando existirem os segredos da conta Apple Developer (APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8),
+#    assina e envia a versão para o App Store Connect (TestFlight), pronta para submeter à revisão da Apple.
+name: App iOS
+on:
+  push:
+    branches: [main]
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gerar o projecto Xcode
+        run: brew install xcodegen && cd ios && xcodegen generate
+      - name: Compilar para o simulador
+        run: |
+          cd ios
+          xcodebuild -project Angola365.xcodeproj -scheme Angola365 -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build | tail -n 25
+          test -d build/Build/Products/Release-iphonesimulator/Angola365.app
+      - name: Abrir num iPhone simulado e capturar o ecrã
+        run: |
+          cd ios
+          DEV=$(xcrun simctl list devices available | grep -E 'iPhone 1[5-7] Pro Max' | head -1 | grep -oE '[0-9A-F-]{36}')
+          [ -z "$DEV" ] && DEV=$(xcrun simctl list devices available | grep -E 'iPhone' | head -1 | grep -oE '[0-9A-F-]{36}')
+          xcrun simctl boot "$DEV"; xcrun simctl bootstatus "$DEV" -b
+          xcrun simctl install "$DEV" build/Build/Products/Release-iphonesimulator/Angola365.app
+          xcrun simctl launch "$DEV" ao.angola365.app
+          sleep 25
+          mkdir -p ../capturas-ios && xcrun simctl io "$DEV" screenshot ../capturas-ios/inicio.png
+          xcrun simctl spawn "$DEV" launchctl list | grep -q ao.angola365.app && echo "A app continua aberta (não fechou)."
+      - name: Guardar a captura no ramo ios-capturas
+        run: |
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git fetch origin ios-capturas || true
+          git checkout -B ios-capturas
+          git add -f capturas-ios/inicio.png
+          git commit -m "Captura da app iOS ($GITHUB_SHA)" || true
+          git push -f origin ios-capturas
+      - name: Assinar e enviar para o App Store Connect (TestFlight)
+        if: env.APPLE_TEAM_ID != '' && env.ASC_KEY_ID != '' && env.ASC_ISSUER_ID != '' && env.ASC_KEY_P8 != ''
+        run: |
+          git checkout "$GITHUB_SHA"
+          cd ios
+          mkdir -p ~/.appstoreconnect/private_keys
+          printf '%s' "$ASC_KEY_P8" > ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8
+          sed -i '' "s/__APPLE_TEAM_ID__/$APPLE_TEAM_ID/" ExportOptions.plist
+          AUTH="-allowProvisioningUpdates -authenticationKeyPath $HOME/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8 -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+          xcodebuild -project Angola365.xcodeproj -scheme Angola365 -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath build/Angola365.xcarchive DEVELOPMENT_TEAM=$APPLE_TEAM_ID CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER $AUTH archive | tail -n 25
+          xcodebuild -exportArchive -archivePath build/Angola365.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/exportar $AUTH | tail -n 25

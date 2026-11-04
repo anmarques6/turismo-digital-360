@@ -7,3 +7,5 @@ node_modules/
 # geradas na publicação (scripts/baixar-imagens.js)
 public/img/*.jpg
 public/creditos.html
+ios/build/
+ios/Angola365.xcodeproj/
