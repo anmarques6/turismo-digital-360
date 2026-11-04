@@ -87,7 +87,7 @@ async function gravarProduto(d, n, t, b, id = null, { simular = false } = {}) {
   if (t === 'eventos' && v.data && v.data < hojeAO()) erro(400, 'A data do evento já passou.');
   // aceita reservas online quando tem preço; sem preço fica «sob consulta»
   if ('parceiro' in RECURSOS[t].campos) v.parceiro = (t === 'alojamentos' ? v.preco_noite : t === 'restaurantes' ? v.preco_medio : v.preco_dia) != null ? 1 : 0;
-  if (!id) { v.ativo = n.estado === 'aprovado' ? 1 : 0; v.negocio_id = n.id; }
+  if (!id) { v.ativo = n.estado === 'aprovado' && !(await donoDemo(n.id)) ? 1 : 0; v.negocio_id = n.id; }
   const ks = Object.keys(v);
   if (id) { if (ks.length) await d.run(`UPDATE ${t} SET ${ks.map(k => k + ' = ?').join(', ')} WHERE id = ?`, ...ks.map(k => v[k]), id); return d.get(`SELECT * FROM ${t} WHERE id = ?`, id); }
   return d.get(`INSERT INTO ${t} (${ks.join(',')}) VALUES (${ks.map(() => '?').join(',')}) RETURNING *`, ...ks.map(k => v[k]));
@@ -102,6 +102,10 @@ async function fichaReclamavel(t, id) {
   if (it.negocio_id) erro(409, 'Esta ficha já pertence a um parceiro. Se é o dono, contacte o suporte.');
   return it;
 }
+// Contas de demonstração (e-mail @demo.turismo360.ao): usam a Área do parceiro como as reais,
+// mas os produtos nunca são publicados no site nem recebem reservas.
+const DEMO = /@demo\.turismo360\.ao$/i;
+const donoDemo = async negocioId => DEMO.test((await get('SELECT u.email FROM negocios n JOIN utilizadores u ON u.id = n.utilizador_id WHERE n.id = ?', negocioId))?.email || '');
 const hojeAO = () => new Date(Date.now() + 36e5).toISOString().slice(0, 10);
 
 async function produtosDe(negocioIds) {
@@ -152,6 +156,7 @@ function registar(c) {
     if ((await get('SELECT COUNT(*)::int AS n FROM negocios WHERE utilizador_id = ?', req.user.id)).n >= MAX_NEGOCIOS) erro(400, `Pode registar até ${MAX_NEGOCIOS} negócios por conta.`);
     const rq = req.dados.reclamar;
     let ficha = null;
+    if (rq && DEMO.test(req.user.email)) erro(409, 'Conta de demonstração: não pode reclamar fichas reais.');
     if (rq) { ficha = await fichaReclamavel(str(rq.tabela, 20), rq.id); req.dados.negocio = { ...(req.dados.negocio || {}), tipo_negocio: tipoParaFicha(rq.tabela, ficha) }; if (await get(`SELECT 1 AS x FROM negocios WHERE utilizador_id = ? AND reclama_tabela = ? AND reclama_id = ? AND estado = 'em_revisao'`, req.user.id, rq.tabela, ficha.id)) erro(409, 'Já enviou um pedido para esta ficha. Aguarde a revisão.'); }
     const o = await validarNegocio(req.dados.negocio || {});
     const def = TIPOS_NEGOCIO[o.tipo_negocio];
@@ -221,6 +226,7 @@ function registar(c) {
   api.patch('/api/parceiro/produtos/:tabela/:id', corpo, async req => {
     await parceiro(req); const t = tabelaParceiro(req.params.tabela); const p = await meuProduto(req, t, req.params.id);
     const n = await negocioCompleto(p.negocio_id); if (n.estado !== 'aprovado') erro(409, 'Os produtos só podem ser publicados depois de a administração aprovar o negócio.');
+    if (req.dados.ativo && DEMO.test(req.user.email)) erro(409, 'Conta de demonstração: os produtos não são publicados no site.');
     await run(`UPDATE ${t} SET ativo = ? WHERE id = ?`, req.dados.ativo ? 1 : 0, p.id);
     return { ok: true, ativo: req.dados.ativo ? 1 : 0 };
   });
@@ -263,6 +269,7 @@ function registar(c) {
     const estado = str(req.dados.estado, 20); if (!ESTADOS[estado] || estado === 'em_revisao') erro(400, 'Estado inválido.');
     const nota = str(req.dados.nota_admin, 1000) || null;
     if (estado === 'rejeitado' && !nota) erro(400, 'Explique ao parceiro o que tem de corrigir.');
+    const demo = await donoDemo(n.id);
     await tx(async d => {
       await d.run('UPDATE negocios SET estado = ?, nota_admin = ?, atualizado_em = ? WHERE id = ?', estado, nota, ctx.agoraSQL(), n.id);
       // aprovação de um pedido «Este negócio é meu»: a ficha existente passa a ser do parceiro, com os preços propostos
@@ -279,7 +286,7 @@ function registar(c) {
         }
       }
       for (const t of TABELAS) {
-        if (estado === 'aprovado') await d.run(`UPDATE ${t} SET ativo = 1${temGeo(t) ? `, coord_estado = CASE WHEN latitude IS NOT NULL THEN 'verificada' ELSE coord_estado END, coord_fonte = CASE WHEN latitude IS NOT NULL THEN 'Indicada pelo parceiro e aprovada pela administração' ELSE coord_fonte END` : ''} WHERE negocio_id = ?`, n.id);
+        if (estado === 'aprovado') await d.run(`UPDATE ${t} SET ativo = ${demo ? 0 : 1}${temGeo(t) ? `, coord_estado = CASE WHEN latitude IS NOT NULL THEN 'verificada' ELSE coord_estado END, coord_fonte = CASE WHEN latitude IS NOT NULL THEN 'Indicada pelo parceiro e aprovada pela administração' ELSE coord_fonte END` : ''} WHERE negocio_id = ?`, n.id);
         else await d.run(`UPDATE ${t} SET ativo = 0 WHERE negocio_id = ?`, n.id);
       }
       const msg = { aprovado: ['Negócio aprovado', `«${n.nome}» já está publicado no Angola 365º e pode receber reservas.`, 'check'], rejeitado: ['Negócio a corrigir', `«${n.nome}»: ${nota}`, 'x'], suspenso: ['Negócio suspenso', `«${n.nome}» foi suspenso${nota ? ': ' + nota : '.'}`, 'x'] }[estado];

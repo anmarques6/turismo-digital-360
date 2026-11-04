@@ -967,3 +967,7 @@ I18N.dic([
   ['Não é possível desfazer.', 'This cannot be undone.', 'Action irréversible.', 'No se puede deshacer.'], ['Senha', 'Password', 'Mot de passe', 'Contraseña'], ['Escreva APAGAR para confirmar', 'Type APAGAR to confirm', 'Tapez APAGAR pour confirmer', 'Escriba APAGAR para confirmar'],
   ['Apagar a conta definitivamente', 'Delete account permanently', 'Supprimer définitivement', 'Eliminar la cuenta definitivamente'], ['A sua conta foi apagada.', 'Your account has been deleted.', 'Votre compte a été supprimé.', 'Su cuenta ha sido eliminada.'],
 ]);
+I18N.dic([
+  ['Conta de demonstração: pode experimentar tudo, mas os produtos não são publicados no site nem recebem reservas reais.', 'Demo account: try everything, but products are never published on the site or booked for real.', 'Compte de démonstration : essayez tout, mais les produits ne sont jamais publiés ni réservés.', 'Cuenta de demostración: pruebe todo, pero los productos no se publican ni reciben reservas reales.'],
+  ['Parceiro (operador)', 'Partner (operator)', 'Partenaire (opérateur)', 'Socio (operador)'], ['senha', 'password', 'mot de passe', 'contraseña'], ['preencher', 'fill in', 'remplir', 'rellenar'],
+]);

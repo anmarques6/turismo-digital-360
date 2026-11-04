@@ -108,7 +108,7 @@ V.negocio = () => {
   const novo = PN.novo || !P.negocios.length;
   const intro = !P.negocios.length ? `<div class="banner b-navy section"><span class="b-ico">${ic('brief')}</span><div class="txt"><h3>${tr_('Tem um hotel, restaurante, rent-a-car ou agência?')}</h3><p>${tr_('Registe o seu negócio no Angola 365º: indique a localização e os preços, receba reservas e pagamentos de turistas de Angola e do mundo.')}</p></div></div>` : '';
   return pageHead(tr_('Área do parceiro'), P.negocios.length ? tr_('Os seus negócios, produtos e reservas') : tr_('Registe o seu negócio no Angola 365º'), I('luanda')) +
-    `<div class="wrap">${intro}${PN.editarNeg ? vFormNegocio(P.negocios.find(n => n.id === PN.editarNeg)) : novo ? (PN.passo === 'form' && PN.tipo ? vFormNegocio() : vTipos()) : vPainel()}</div>`;
+    `<div class="wrap">${/@demo\.turismo360\.ao$/i.test(S.user.email) ? `<p class="aviso-viagem section">${ic('badge')} ${tr_('Conta de demonstração: pode experimentar tudo, mas os produtos não são publicados no site nem recebem reservas reais.')}</p>` : ''}${intro}${PN.editarNeg ? vFormNegocio(P.negocios.find(n => n.id === PN.editarNeg)) : novo ? (PN.passo === 'form' && PN.tipo ? vFormNegocio() : vTipos()) : vPainel()}</div>`;
 };
 
 /* ---------- produto (modal) ---------- */

@@ -339,7 +339,7 @@ function loginView(mode = 'in') {
     <div class="socials">${SOCIAIS.map(([id, nome, svg]) => `<button type="button" data-social="${id}" aria-label="${mode === 'in' ? 'Entrar' : 'Criar conta'} com ${nome}" title="${nome}">${svg}<span>${nome}</span></button>`).join('')}</div>
    </div>
    <p class="swap">${mode === 'in' ? 'Ainda não tem conta? <button type="button" data-mode="up">Criar conta</button>' : 'Já tem conta? <button type="button" data-mode="in">Entrar</button>'}</p>
-   ${mode === 'in' ? `<p class="demo-note"><a href="/privacidade.html" class="link" style="font-size:inherit">Privacidade</a> · <a href="/termos.html" class="link" style="font-size:inherit">Termos</a> · <a href="/creditos.html" class="link" style="font-size:inherit">Créditos das imagens</a> · ${t('Conta de demonstração: <b>{email}</b> · senha <b>{senha}</b>', { email: 'visitante@turismo360.ao', senha: 'angola360' })} <button type="button" class="link" data-demo style="display:inline;font-size:inherit">preencher</button></p>` : ''}
+   ${mode === 'in' ? `<p class="demo-note"><a href="/privacidade.html" class="link" style="font-size:inherit">Privacidade</a> · <a href="/termos.html" class="link" style="font-size:inherit">Termos</a> · <a href="/creditos.html" class="link" style="font-size:inherit">Créditos das imagens</a> · ${t('Conta de demonstração: <b>{email}</b> · senha <b>{senha}</b>', { email: 'visitante@turismo360.ao', senha: 'angola360' })} <button type="button" class="link" data-demo style="display:inline;font-size:inherit">preencher</button> · ${t('Parceiro (operador)')}: <b>parceiro@demo.turismo360.ao</b> · ${t('senha')} <b>Parceiro365</b> <button type="button" class="link" data-demo-parceiro style="display:inline;font-size:inherit">${t('preencher')}</button></p>` : ''}
   </form></div></div>`;
 }
 
@@ -520,6 +520,7 @@ document.addEventListener('click', async e => {
   if (ds.suporte !== undefined) { abrirSuporte(ds.suporte); return; }
   if (ds.mode) { S.loginMode = ds.mode; S.msgLogin = null; render(); return; }
   if (ds.demo !== undefined) { document.getElementById('l-email').value = 'visitante@turismo360.ao'; document.getElementById('l-pass').value = 'angola360'; return; }
+  if (ds.demoParceiro !== undefined) { document.getElementById('l-email').value = 'parceiro@demo.turismo360.ao'; document.getElementById('l-pass').value = 'Parceiro365'; return; }
   if (ds.social) {
     const nome = SOCIAIS.find(x => x[0] === ds.social)?.[1] || ds.social;
     if (S.provedores && !S.provedores.includes(ds.social)) { const er = document.getElementById('l-err'); er.hidden = false; er.style.color = 'var(--muted)'; er.textContent = I18N.t('A entrada com {nome} ainda não foi activada. Use o e-mail por agora.', { nome }); return; }

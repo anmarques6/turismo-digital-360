@@ -495,3 +495,13 @@ test('N1 apagar a conta: dados pessoais removidos, registos de pagamento anónim
   assert.equal(u.nome, 'Conta apagada'); assert.equal(u.telefone, null); assert.equal(u.ativo, 0); assert.equal(v, 0);
   assert.equal((await req('POST', '/api/auth/registar', { nome: 'De Novo', email, senha: 'segredo12' })).status, 200, 'o e-mail pode voltar a ser usado');
 });
+
+test('L4 conta de demonstração de parceiro: aprovada, mas os produtos nunca são publicados', async () => {
+  const op = (await req('POST', '/api/auth/registar', { nome: 'Parceiro Demo', email: `p${Date.now()}@demo.turismo360.ao`, senha: 'Parceiro365' })).j.token;
+  const r = (await req('POST', '/api/parceiro/negocios', { negocio: { tipo_negocio: 'pousada', nome: 'Pousada Demonstração', telefone: '923 000 000', endereco: 'Rua de exemplo', latitude: LUANDA.lat, longitude: LUANDA.lon, imagem: '/img/h_cazenga.jpg' }, produto: { preco_noite: 30000 } }, op)).j;
+  await req('PATCH', `/api/admin/negocios/${r.negocio.id}`, { estado: 'aprovado' }, admin);
+  assert.ok(!(await req('GET', '/api/alojamentos')).j.some(a => a.id === r.produto.id), 'não aparece no site');
+  assert.equal((await req('PATCH', `/api/parceiro/produtos/alojamentos/${r.produto.id}`, { ativo: 1 }, op)).status, 409);
+  const al = (await req('GET', '/api/alojamentos')).j.find(a => !a.negocio_id && a.parceiro === 0);
+  assert.equal((await req('POST', '/api/parceiro/negocios', { negocio: { nome: 'x', telefone: '923 000 001', endereco: 'Rua', latitude: LUANDA.lat, longitude: LUANDA.lon }, produto: { preco_noite: 1 }, reclamar: { tabela: 'alojamentos', id: al.id } }, op)).status, 409, 'não reclama fichas reais');
+});
