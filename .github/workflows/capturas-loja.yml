@@ -1,0 +1,26 @@
+# Capturas de ecrã para as lojas (Google Play e App Store), tiradas do site em produção
+name: Capturas para as lojas
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/capturas-loja.js', '.github/workflows/capturas-loja.yml']
+permissions:
+  contents: write
+jobs:
+  capturas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - run: node scripts/capturas-loja.js capturas-loja
+      - name: Guardar no ramo loja-capturas
+        run: |
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git checkout -B loja-capturas
+          git add -f capturas-loja/*.png
+          git commit -m "Capturas para as lojas ($GITHUB_SHA)" || true
+          git push -f origin loja-capturas
