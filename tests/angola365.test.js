@@ -479,3 +479,19 @@ test('M4 a mesma pesquisa repetida não duplica «As minhas viagens»', async ()
   assert.equal(a.viagem_id, b.viagem_id);
   assert.notEqual((await req('POST', '/api/viagens/pesquisar', { ...q, passageiros: 2 }, outro)).j.viagem_id, a.viagem_id);
 });
+
+test('N1 apagar a conta: dados pessoais removidos, registos de pagamento anónimos, entrada deixa de funcionar', async () => {
+  const email = `apagar${Date.now()}@exemplo.ao`;
+  const t = (await req('POST', '/api/auth/registar', { nome: 'Para Apagar', email, senha: 'segredo12' })).j.token;
+  await req('POST', '/api/viagens/pesquisar', { origem: { provincia: 'Luanda' }, destino: { provincia: 'Huambo' } }, t);
+  assert.equal((await req('DELETE', '/api/auth/eu', { senha: 'errada123' }, t)).status, 400);
+  assert.equal((await req('DELETE', '/api/auth/eu', { senha: 'x' }, admin)).status, 403, 'administradores não se apagam a si próprios');
+  assert.equal((await req('DELETE', '/api/auth/eu', { senha: 'segredo12' }, t)).status, 200);
+  assert.equal((await req('GET', '/api/auth/eu', null, t)).status, 401, 'sessões terminadas');
+  assert.equal((await req('POST', '/api/auth/entrar', { email, senha: 'segredo12' })).status, 401, 'o e-mail deixou de existir');
+  const pg = criarPool(urlTeste, 1);
+  const u = (await pg.query(`SELECT nome, email, telefone, ativo FROM utilizadores WHERE email LIKE 'apagada-%' ORDER BY id DESC LIMIT 1`)).rows[0];
+  const v = (await pg.query(`SELECT COUNT(*)::int AS n FROM viagens v JOIN utilizadores u ON u.id = v.utilizador_id WHERE u.email LIKE 'apagada-%'`)).rows[0].n; pg.fechar();
+  assert.equal(u.nome, 'Conta apagada'); assert.equal(u.telefone, null); assert.equal(u.ativo, 0); assert.equal(v, 0);
+  assert.equal((await req('POST', '/api/auth/registar', { nome: 'De Novo', email, senha: 'segredo12' })).status, 200, 'o e-mail pode voltar a ser usado');
+});

@@ -308,6 +308,7 @@ V.perfil = () => {
     <button data-suporte="">${ic('headset')}<span>Ajuda e suporte</span>${ic('chev')}</button>
     ${u.papel === 'admin' ? `<a href="/admin/" style="display:flex">${ic('chart')}<span>Painel de administração</span>${ic('chev')}</a>` : ''}
     <button data-logout style="color:var(--red)">${ic('logout')}<span>Terminar sessão</span></button>
+    ${u.papel !== 'admin' ? `<button data-apagar-conta style="color:var(--muted)">${ic('trash')}<span>Apagar a minha conta</span></button>` : ''}
    </div>
    <p class="meta" style="justify-content:center;margin-top:24px">Desenvolvido por <img src="${I('sigaf')}" alt="SIGAF" style="height:20px;width:auto"> · www.sigafangola.ao · <a class="link" style="display:inline;font-size:inherit" href="/creditos.html">Créditos das imagens</a> · <a class="link" style="display:inline;font-size:inherit" href="/privacidade.html">Privacidade</a> · <a class="link" style="display:inline;font-size:inherit" href="/termos.html">Termos</a></p></div>`;
 };
@@ -634,3 +635,20 @@ API.onExpira = () => { if (S.user) { S.msgLogin = 'A sua sessão expirou. Entre 
   if (S.user) agendarDicas();
   setInterval(() => { if (S.user && !document.hidden) carregarNotifs(); }, 60000);
 })();
+
+/* ---------- apagar a conta (exigido pelas lojas de apps) ---------- */
+document.addEventListener('click', e => {
+  if (!e.target.closest('[data-apagar-conta]')) return;
+  const u = S.user, comSenha = u.senha_definida !== 0;
+  openModal(`<div class="modal" role="dialog" aria-modal="true" aria-label="${t('Apagar a minha conta')}"><form class="mb" data-apagarf>${modalHead(t('Apagar a minha conta'))}
+   <p>${t('Os seus dados pessoais, favoritos, roteiros, viagens e notificações são apagados. As reservas e os pagamentos já feitos ficam guardados sem o seu nome, porque a lei obriga a manter os registos contabilísticos.')}</p>
+   <p class="aviso-viagem">${ic('clock')} ${t('Não é possível desfazer.')}</p>
+   ${comSenha ? `<label class="field">${t('Senha')}<input type="password" name="senha" required autocomplete="current-password"></label>` : `<label class="field">${t('Escreva APAGAR para confirmar')}<input name="confirmar" required autocomplete="off"></label>`}
+   <p class="err" hidden></p><button class="btn btn-red" type="submit">${ic('trash')} ${t('Apagar a conta definitivamente')}</button></form></div>`);
+});
+document.addEventListener('submit', async e => {
+  const f = e.target; if (!f.matches('[data-apagarf]')) return; e.preventDefault();
+  try { await API.del('/api/auth/eu', { senha: f.senha?.value, confirmar: f.confirmar?.value });
+    closeModal(); try { Push.cancelar(); } catch (er) {} API.setToken(null); S.user = null; toast(t('A sua conta foi apagada.')); render();
+  } catch (er) { const p = f.querySelector('.err'); p.hidden = false; p.textContent = er.message; }
+});

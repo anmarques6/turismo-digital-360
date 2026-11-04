@@ -18,7 +18,7 @@ const API = (() => {
     get token() { return token; },
     setToken(t) { token = t; try { t ? localStorage.setItem(KEY, t) : localStorage.removeItem(KEY); } catch (e) {} },
     get: u => pedir('GET', u), post: (u, d = {}) => pedir('POST', u, d), put: (u, d) => pedir('PUT', u, d),
-    patch: (u, d) => pedir('PATCH', u, d), del: u => pedir('DELETE', u),
+    patch: (u, d) => pedir('PATCH', u, d), del: (u, d) => pedir('DELETE', u, d),
     onExpira: null,
   };
 })();

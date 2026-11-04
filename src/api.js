@@ -169,6 +169,29 @@ api.patch('/api/auth/eu', corpo, async req => {
 });
 
 // ---------- entrada com Google, Facebook e Microsoft ----------
+// Apagar a conta (exigido pela Apple e pela Google): os dados pessoais são apagados; reservas e pagamentos
+// ficam guardados sem nome, e-mail nem telefone (obrigação contabilística). Negócios do parceiro deixam de ser publicados.
+api.delete('/api/auth/eu', corpo, async req => {
+  await auth(req); const u = req.user, b = req.dados || {};
+  if (u.papel === 'admin') erro(403, 'Contas de administrador são removidas por outro administrador.');
+  if (u.senha_definida !== 0) { if (!verificaSenha(String(b.senha || ''), u.senha_hash)) erro(400, 'Senha incorrecta.'); }
+  else if (str(b.confirmar, 20).toUpperCase() !== 'APAGAR') erro(400, 'Escreva APAGAR para confirmar.');
+  if (u.saldo > 0) erro(409, `Tem ${kz(u.saldo)} na carteira. Peça o reembolso ao suporte antes de apagar a conta.`);
+  if (await get(`SELECT 1 AS x FROM reservas WHERE utilizador_id = ? AND estado IN ('pendente','confirmada') AND COALESCE(data_fim, data_inicio, '9999') >= ? LIMIT 1`, u.id, hoje())) erro(409, 'Tem reservas por usar. Cancele-as ou espere pela data antes de apagar a conta.');
+  await tx(async d => {
+    for (const t of ['sessoes', 'favoritos', 'notificacoes', 'lembretes', 'contas_externas', 'codigos_entrada', 'roteiros', 'enda_sessoes', 'push_subscricoes', 'viagens']) await d.run(`DELETE FROM ${t} WHERE utilizador_id = ?`, u.id);
+    await d.run(`UPDATE avaliacoes SET autor_nome = 'Visitante', autor_cidade = NULL, utilizador_id = NULL WHERE utilizador_id = ?`, u.id);
+    await d.run('UPDATE pedidos_suporte SET utilizador_id = NULL WHERE utilizador_id = ?', u.id);
+    await d.run('UPDATE enda_registos SET utilizador_id = NULL WHERE utilizador_id = ?', u.id);
+    for (const n of await d.all('SELECT id FROM negocios WHERE utilizador_id = ?', u.id)) {
+      for (const t of ['alojamentos', 'restaurantes', 'experiencias', 'viaturas', 'eventos', 'tradutores']) await d.run(`UPDATE ${t} SET ativo = 0 WHERE negocio_id = ?`, n.id);
+      await d.run(`UPDATE negocios SET estado = 'suspenso', nota_admin = 'Conta do dono apagada a pedido', telefone = NULL, email = NULL, nif = NULL WHERE id = ?`, n.id);
+    }
+    await d.run(`UPDATE utilizadores SET nome = 'Conta apagada', email = ?, telefone = NULL, senha_hash = ?, senha_definida = 0, ativo = 0, pontos = 0 WHERE id = ?`, `apagada-${u.id}-${crypto.randomBytes(4).toString('hex')}@conta-apagada.invalid`, 'apagada$' + crypto.randomBytes(24).toString('hex'), u.id);
+  });
+  await auditar(req, 'apagar_conta', 'utilizadores', u.id, 'a pedido do próprio');
+  return { apagada: true };
+});
 api.get('/api/auth/provedores', async () => ({ ativos: OA.ativos(), inatividade_s: INATIVIDADE_S }));
 api.get('/api/auth/oauth/:p', async (req, res) => {
   const p = req.params.p;
