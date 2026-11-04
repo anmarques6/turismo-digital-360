@@ -777,3 +777,40 @@ ON CONFLICT (conector) DO NOTHING;
 
 -- v3.11 · Logótipos oficiais das transportadoras (obtidos nos sites oficiais a 4/11/2026; créditos em /creditos.html)
 UPDATE transportadoras SET logotipo = '/img/transportadoras/' || conector || '.png' WHERE logotipo IS NULL AND conector IN ('taag','macon','nawabus','huambo_expresso','real_express','cidralia','fly_angola');
+
+-- v3.12 · Avaliações reais (comentários e estrelas) de destinos, alojamentos, restaurantes, experiências e pratos
+-- As notas passam a ser SEMPRE calculadas a partir das avaliações aprovadas de utilizadores reais.
+-- As avaliações de exemplo dos dados iniciais (sem utilizador) ficam escondidas, não apagadas.
+ALTER TABLE avaliacoes ADD COLUMN IF NOT EXISTS origem TEXT;
+ALTER TABLE avaliacoes ADD COLUMN IF NOT EXISTS editado_em TEXT;
+UPDATE avaliacoes SET origem = CASE WHEN utilizador_id IS NULL THEN 'exemplo' ELSE 'utilizador' END,
+                      aprovada = CASE WHEN utilizador_id IS NULL THEN 0 ELSE aprovada END WHERE origem IS NULL;
+ALTER TABLE avaliacoes ALTER COLUMN origem SET DEFAULT 'utilizador';
+CREATE INDEX IF NOT EXISTS idx_avaliacoes_utilizador ON avaliacoes(utilizador_id, criado_em);
+CREATE OR REPLACE FUNCTION fn_tabela_avaliavel(t text) RETURNS text LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE t WHEN 'experiencia' THEN 'experiencias' WHEN 'destino' THEN 'destinos' WHEN 'alojamento' THEN 'alojamentos'
+                WHEN 'restaurante' THEN 'restaurantes' WHEN 'tradutor' THEN 'tradutores' WHEN 'prato' THEN 'pratos' END $$;
+CREATE OR REPLACE FUNCTION fn_recalcular_avaliacao(p_tipo text, p_id integer) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE tabela text := fn_tabela_avaliavel(p_tipo);
+BEGIN
+  IF tabela IS NULL THEN RETURN; END IF;
+  EXECUTE format('UPDATE %I x SET rating = COALESCE((SELECT ROUND(AVG(nota)::numeric, 1) FROM avaliacoes a WHERE a.tipo = $1 AND a.item_id = x.id AND a.aprovada = 1 AND a.origem = ''utilizador''), 0),
+                  num_avaliacoes = (SELECT COUNT(*) FROM avaliacoes a WHERE a.tipo = $1 AND a.item_id = x.id AND a.aprovada = 1 AND a.origem = ''utilizador'') WHERE x.id = $2', tabela) USING p_tipo, p_id;
+END $$;
+CREATE OR REPLACE FUNCTION fn_avaliacao_recalcular() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP IN ('UPDATE', 'DELETE') THEN PERFORM fn_recalcular_avaliacao(OLD.tipo, OLD.item_id); END IF;
+  IF TG_OP IN ('INSERT', 'UPDATE') THEN PERFORM fn_recalcular_avaliacao(NEW.tipo, NEW.item_id); END IF;
+  RETURN NULL;
+END $$;
+DROP TRIGGER IF EXISTS trg_avaliacao_media ON avaliacoes;
+DROP TRIGGER IF EXISTS trg_avaliacao_recalcular ON avaliacoes;
+CREATE TRIGGER trg_avaliacao_recalcular AFTER INSERT OR UPDATE OR DELETE ON avaliacoes FOR EACH ROW EXECUTE FUNCTION fn_avaliacao_recalcular();
+-- Recalcula todas as notas a partir das avaliações reais (idempotente)
+CREATE OR REPLACE FUNCTION fn_recalcular_todas_avaliacoes() RETURNS void LANGUAGE plpgsql AS $$ DECLARE t text; BEGIN
+  FOREACH t IN ARRAY ARRAY['experiencias','destinos','alojamentos','restaurantes','tradutores','pratos'] LOOP
+    EXECUTE format('UPDATE %I x SET rating = COALESCE(r.media, 0), num_avaliacoes = COALESCE(r.n, 0) FROM %I y LEFT JOIN (SELECT item_id, ROUND(AVG(nota)::numeric, 1) AS media, COUNT(*) AS n FROM avaliacoes WHERE tipo = %L AND aprovada = 1 AND origem = ''utilizador'' GROUP BY item_id) r ON r.item_id = y.id WHERE x.id = y.id', t, t,
+      CASE t WHEN 'experiencias' THEN 'experiencia' WHEN 'destinos' THEN 'destino' WHEN 'alojamentos' THEN 'alojamento' WHEN 'restaurantes' THEN 'restaurante' WHEN 'tradutores' THEN 'tradutor' ELSE 'prato' END);
+  END LOOP;
+END $$;
+SELECT fn_recalcular_todas_avaliacoes();

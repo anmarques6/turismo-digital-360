@@ -129,12 +129,20 @@ test('favoritos, lembretes e notificações', async () => {
   const n = await req('GET', '/api/notificacoes', null, cliente); assert.ok(n.j.lista.some(x => x.titulo === 'Lembrete criado'));
 });
 
-test('avaliação actualiza a média e só uma por pessoa', async () => {
+test('avaliações: nota vem só de avaliações reais; uma por pessoa, editável e apagável', async () => {
   const antes = (await req('GET', '/api/experiencias/5')).j;
-  assert.equal((await req('POST', '/api/avaliacoes', { tipo: 'experiencia', item_id: 5, nota: 1, comentario: 'Teste' }, cliente)).status, 200);
-  const depois = (await req('GET', '/api/experiencias/5')).j;
-  assert.equal(depois.num_avaliacoes, antes.num_avaliacoes + 1); assert.ok(depois.rating < antes.rating);
-  assert.equal((await req('POST', '/api/avaliacoes', { tipo: 'experiencia', item_id: 5, nota: 5 }, cliente)).status, 409);
+  assert.equal(antes.num_avaliacoes, 0, 'as avaliações de exemplo não contam'); assert.equal(Number(antes.rating), 0);
+  assert.equal((await req('POST', '/api/avaliacoes', { tipo: 'experiencia', item_id: 5, nota: 6 }, cliente)).status, 400);
+  assert.equal((await req('POST', '/api/avaliacoes', { tipo: 'experiencia', item_id: 5, nota: 2, comentario: 'Teste do guia' }, cliente)).j.criada, true);
+  let d = (await req('GET', '/api/experiencias/5')).j; assert.equal(d.num_avaliacoes, 1); assert.equal(Number(d.rating), 2);
+  assert.equal((await req('POST', '/api/avaliacoes', { tipo: 'experiencia', item_id: 5, nota: 4, comentario: 'Mudei de ideias' }, cliente)).j.editada, true);
+  d = (await req('GET', '/api/experiencias/5')).j; assert.equal(d.num_avaliacoes, 1, 'não duplica'); assert.equal(Number(d.rating), 4);
+  const A = (await req('GET', '/api/avaliacoes-de/experiencia/5', null, cliente)).j;
+  assert.equal(A.total, 1); assert.equal(A.minha.nota, 4); assert.equal(A.distribuicao.find(x => x.estrelas === 4).total, 1); assert.equal(A.lista[0].comentario, 'Mudei de ideias');
+  assert.equal((await req('GET', '/api/avaliacoes-de/experiencia/5')).j.minha, null, 'sem sessão não há «a minha»');
+  assert.equal((await req('DELETE', '/api/avaliacoes/' + A.minha.id, null, admin)).status, 404, 'só o autor apaga a sua');
+  assert.equal((await req('DELETE', '/api/avaliacoes/' + A.minha.id, null, cliente)).status, 200);
+  d = (await req('GET', '/api/experiencias/5')).j; assert.equal(d.num_avaliacoes, 0);
 });
 
 test('admin: validação, edição, apagar com reservas despublica', async () => {

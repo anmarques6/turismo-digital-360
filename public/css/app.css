@@ -754,3 +754,25 @@ span.ilustr{pointer-events:none}
 
 .vj-logo{width:96px;height:48px;border-radius:10px;object-fit:cover;border:1px solid var(--line)}
 .vj-ini{width:48px}
+
+/* ---------- Avaliações ---------- */
+.aval-btn{display:inline-flex;align-items:center;gap:5px;font-size:13.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer;align-self:flex-start}
+.aval-btn:hover{border-color:var(--gold)}
+.aval-btn .star .i{width:15px;height:15px}
+.aval-modal{max-width:640px}
+.aval-resumo{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;margin:8px 0 16px}
+.aval-media{display:grid;justify-items:center;gap:2px;min-width:110px}
+.aval-media b{font-size:40px;line-height:1}
+.aval-media small{color:var(--muted)}
+.aval-estrelas{color:var(--gold);letter-spacing:1px;font-size:16px;white-space:nowrap}
+.aval-dist{display:grid;gap:4px}
+.aval-dist div{display:grid;grid-template-columns:28px 1fr 28px;gap:8px;align-items:center;font-size:13px}
+.aval-dist i{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;display:block}
+.aval-dist i b{display:block;height:100%;background:var(--gold);border-radius:99px}
+.aval-form{display:grid;gap:10px;border:1.5px solid var(--line);border-radius:14px;padding:14px;margin-bottom:16px}
+.aval-form textarea{width:100%;box-sizing:border-box;border:1.5px solid var(--line);background:var(--surface-2);border-radius:12px;padding:10px 12px;font:inherit;color:var(--fg)}
+.aval-lista{display:grid;gap:10px}
+.aval-lista article{border-bottom:1px solid var(--line);padding-bottom:10px}
+.aval-topo{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.aval-lista p{margin:6px 0 0;font-size:14.5px;line-height:1.5}
+@media (max-width:520px){.aval-resumo{grid-template-columns:1fr}.aval-media{justify-items:start}}

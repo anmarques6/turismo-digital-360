@@ -166,10 +166,9 @@ async function semear(dExterno) {
     await require('./dados-aplicar').aplicarDadosV34(d, { desativarExemplos: process.env.SEED_DEMO === '0' });
     await require('./dados-aplicar').aplicarDadosV35(d);
 
-    // As avaliações iniciais já estão contadas no rating: desliga o trigger de médias durante a importação
-    await d.run('ALTER TABLE avaliacoes DISABLE TRIGGER trg_avaliacao_media');
-    for (const [tipo, id, nome, cidade, nota, txt] of AVALIACOES) await d.run('INSERT INTO avaliacoes (tipo, item_id, autor_nome, autor_cidade, nota, comentario) VALUES (?,?,?,?,?,?)', tipo, id, nome, cidade, nota, txt);
-    await d.run('ALTER TABLE avaliacoes ENABLE TRIGGER trg_avaliacao_media');
+    // Avaliações de exemplo: ficam escondidas (origem «exemplo») e nunca contam para as notas, que vêm só de utilizadores reais
+    for (const [tipo, id, nome, cidade, nota, txt] of AVALIACOES) await d.run(`INSERT INTO avaliacoes (tipo, item_id, autor_nome, autor_cidade, nota, comentario, origem, aprovada) VALUES (?,?,?,?,?,?,'exemplo',0)`, tipo, id, nome, cidade, nota, txt);
+    await d.get('SELECT fn_recalcular_todas_avaliacoes() AS ok');
 
     // ---------- contas ----------
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@turismo360.ao').toLowerCase();

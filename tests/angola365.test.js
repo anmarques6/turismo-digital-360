@@ -510,3 +510,23 @@ test('M5 transportadoras com logótipo oficial', async () => {
   const r = (await req('POST', '/api/viagens/pesquisar', { origem: { provincia: 'Luanda' }, destino: { provincia: 'Benguela' } }, cliente)).j;
   for (const o of [...r.rodoviario, ...r.aereo]) assert.match(o.logotipo || '', /^\/img\/transportadoras\/[a-z_]+\.png$/, o.nome);
 });
+
+test('N2 avaliar hotéis, restaurantes e destinos; o dono não avalia o próprio negócio; moderação recalcula a nota', async () => {
+  const dest = (await req('GET', '/api/destinos')).j[0], rest = (await req('GET', '/api/restaurantes')).j[0];
+  assert.equal((await req('POST', '/api/avaliacoes', { tipo: 'destino', item_id: dest.id, nota: 5, comentario: 'Lindíssimo' }, cliente)).status, 200);
+  assert.equal((await req('POST', '/api/avaliacoes', { tipo: 'destino', item_id: dest.id, nota: 3 }, outro)).status, 200);
+  let d = (await req('GET', '/api/destinos')).j.find(x => x.id === dest.id); assert.equal(d.num_avaliacoes, 2); assert.equal(Number(d.rating), 4);
+  assert.equal((await req('POST', '/api/avaliacoes', { tipo: 'restaurante', item_id: rest.id, nota: 4, comentario: 'Bom muamba' }, cliente)).status, 200);
+  assert.equal((await req('POST', '/api/avaliacoes', { tipo: 'evento', item_id: 1, nota: 4 }, cliente)).status, 400);
+  // o dono de um hotel não avalia o próprio hotel
+  const op = (await req('POST', '/api/auth/registar', { nome: 'Dono Hotel', email: `dh${Date.now()}@exemplo.ao`, senha: 'segredo12' })).j.token;
+  const n = (await req('POST', '/api/parceiro/negocios', { negocio: { tipo_negocio: 'hotel', nome: 'Hotel Avaliado', telefone: '923 000 777', endereco: 'Rua', latitude: LUANDA.lat, longitude: LUANDA.lon, imagem: '/img/h_epic.jpg' }, produto: { preco_noite: 30000 } }, op)).j;
+  await req('PATCH', `/api/admin/negocios/${n.negocio.id}`, { estado: 'aprovado' }, admin);
+  assert.equal((await req('POST', '/api/avaliacoes', { tipo: 'alojamento', item_id: n.produto.id, nota: 5 }, op)).status, 403);
+  assert.equal((await req('POST', '/api/avaliacoes', { tipo: 'alojamento', item_id: n.produto.id, nota: 5, comentario: 'Óptimo quarto' }, cliente)).status, 200);
+  // moderação: ocultar retira da média
+  const L = (await req('GET', '/api/admin/avaliacoes', null, admin)).j; const a3 = L.find(a => a.tipo === 'destino' && a.item_id === dest.id && a.nota === 3);
+  await req('PATCH', `/api/admin/avaliacoes/${a3.id}`, { aprovada: 0 }, admin);
+  d = (await req('GET', '/api/destinos')).j.find(x => x.id === dest.id); assert.equal(d.num_avaliacoes, 1); assert.equal(Number(d.rating), 5);
+  assert.ok(L.some(a => a.origem === 'exemplo' && !a.aprovada), 'exemplos iniciais escondidos');
+});

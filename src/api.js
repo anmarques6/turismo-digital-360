@@ -284,7 +284,7 @@ for (const t of TABELAS_PUBLICAS) {
   api.get(`/api/${t}/:id`, async req => {
     const i = (await listarPublico(t, linguaPedido(req))).find(x => x.id === Number(req.params.id));
     if (!i) erro(404, 'Não encontrado.');
-    return { ...i, avaliacoes: await all('SELECT autor_nome, autor_cidade, nota, comentario, criado_em FROM avaliacoes WHERE tipo = ? AND item_id = ? AND aprovada = 1 ORDER BY criado_em DESC LIMIT 20', RECURSOS[t].tipo, i.id) };
+    return { ...i, avaliacoes: await all(`SELECT autor_nome, autor_cidade, nota, comentario, criado_em FROM avaliacoes WHERE tipo = ? AND item_id = ? AND aprovada = 1 AND origem = 'utilizador' ORDER BY criado_em DESC LIMIT 20`, RECURSOS[t].tipo, i.id) };
   });
 }
 
@@ -318,17 +318,42 @@ api.get('/api/app/:nome', async (req, res) => {
   res.end(f.dados);
 });
 
-api.get('/api/avaliacoes/:tipo/:id', req => all('SELECT autor_nome, autor_cidade, nota, comentario, criado_em FROM avaliacoes WHERE tipo = ? AND item_id = ? AND aprovada = 1 ORDER BY criado_em DESC LIMIT 30', req.params.tipo, Number(req.params.id)));
+api.get('/api/avaliacoes/:tipo/:id', req => all(`SELECT autor_nome, autor_cidade, nota, comentario, criado_em FROM avaliacoes WHERE tipo = ? AND item_id = ? AND aprovada = 1 AND origem = 'utilizador' ORDER BY criado_em DESC LIMIT 30`, req.params.tipo, Number(req.params.id)));
+// Avaliações (estrelas e comentário) de quem usa a plataforma. Uma por pessoa e por lugar; pode ser editada ou apagada.
+// O dono de um negócio não avalia o próprio negócio. A nota mostrada é sempre a média das avaliações reais aprovadas.
+const AVALIAVEIS = { destino: 'destinos', alojamento: 'alojamentos', restaurante: 'restaurantes', experiencia: 'experiencias', prato: 'pratos', tradutor: 'tradutores' };
+const autorCurto = nome => { const p = String(nome || '').trim().split(/\s+/); return p.length > 1 ? `${p[0]} ${p.at(-1)[0]}.` : p[0] || 'Visitante'; };
+async function sessaoOpcional(req) { if (!req.headers.authorization) return; try { await auth(req); } catch { req.user = null; } }
+api.get('/api/avaliacoes-de/:tipo/:id', async req => {
+  const tipo = req.params.tipo, id = Number(req.params.id); if (!AVALIAVEIS[tipo]) erro(400, 'Tipo inválido.');
+  await sessaoOpcional(req);
+  const L = await all(`SELECT a.id, a.autor_nome, a.autor_cidade, a.nota, a.comentario, a.criado_em, a.editado_em,
+      EXISTS (SELECT 1 FROM reservas r WHERE r.utilizador_id = a.utilizador_id AND r.tipo = a.tipo AND r.item_id = a.item_id AND r.estado IN ('confirmada','concluida')) AS reserva_verificada
+    FROM avaliacoes a WHERE a.tipo = ? AND a.item_id = ? AND a.aprovada = 1 AND a.origem = 'utilizador' ORDER BY a.criado_em DESC, a.id DESC LIMIT 200`, tipo, id);
+  const distribuicao = [5, 4, 3, 2, 1].map(n => ({ estrelas: n, total: L.filter(a => a.nota === n).length }));
+  const media = L.length ? Math.round(L.reduce((s, a) => s + a.nota, 0) / L.length * 10) / 10 : 0;
+  const minha = req.user ? await get('SELECT id, nota, comentario, aprovada, criado_em, editado_em FROM avaliacoes WHERE utilizador_id = ? AND tipo = ? AND item_id = ?', req.user.id, tipo, id) : null;
+  return { media, total: L.length, distribuicao, lista: L.map(a => ({ ...a, reserva_verificada: !!a.reserva_verificada })), minha };
+});
 api.post('/api/avaliacoes', corpo, async req => {
   await auth(req); const b = req.dados;
   const tipo = str(b.tipo, 30), id = Number(b.item_id), nota = Number(b.nota), com = str(b.comentario, 800);
-  const tabela = TABELA_DO_TIPO[tipo]; if (!tabela || RECURSOS[tabela].semPublico) erro(400, 'Tipo inválido.');
-  if (!(await get(`SELECT 1 AS x FROM ${tabela} WHERE id = ?`, id))) erro(404, 'Item não encontrado.');
-  if (!(nota >= 1 && nota <= 5) || !Number.isInteger(nota)) erro(400, 'Escolha uma nota de 1 a 5.');
-  if (await get('SELECT 1 AS x FROM avaliacoes WHERE utilizador_id = ? AND tipo = ? AND item_id = ?', req.user.id, tipo, id)) erro(409, 'Já avaliou este item. Obrigado!');
-  const partes = req.user.nome.trim().split(/\s+/);
-  const autor = partes.length > 1 ? `${partes[0]} ${partes.at(-1)[0]}.` : partes[0];
-  await run('INSERT INTO avaliacoes (utilizador_id, autor_nome, autor_cidade, tipo, item_id, nota, comentario) VALUES (?,?,?,?,?,?,?)', req.user.id, autor, str(b.cidade, 60) || null, tipo, id, nota, com || null);
+  const tabela = AVALIAVEIS[tipo]; if (!tabela) erro(400, 'Tipo inválido.');
+  const it = await get(`SELECT * FROM ${tabela} WHERE id = ? AND ativo = 1`, id); if (!it) erro(404, 'Item não encontrado.');
+  if (!(nota >= 1 && nota <= 5) || !Number.isInteger(nota)) erro(400, 'Escolha uma nota de 1 a 5 estrelas.');
+  if (com && com.length < 3) erro(400, 'O comentário é demasiado curto.');
+  if (it.negocio_id && await get('SELECT 1 AS x FROM negocios WHERE id = ? AND utilizador_id = ?', it.negocio_id, req.user.id)) erro(403, 'Não pode avaliar o seu próprio negócio.');
+  const ja = await get('SELECT id FROM avaliacoes WHERE utilizador_id = ? AND tipo = ? AND item_id = ?', req.user.id, tipo, id);
+  if (ja) { await run('UPDATE avaliacoes SET nota = ?, comentario = ?, autor_cidade = COALESCE(?, autor_cidade), editado_em = ? WHERE id = ?', nota, com || null, str(b.cidade, 60) || null, agoraSQL(), ja.id); return { editada: true }; }
+  if ((await get(`SELECT COUNT(*)::int AS n FROM avaliacoes WHERE utilizador_id = ? AND criado_em >= ?`, req.user.id, msParaSQL(Date.now() - 864e5))).n >= 20) erro(429, 'Limite de 20 avaliações por dia. Obrigado pela participação!');
+  await run(`INSERT INTO avaliacoes (utilizador_id, autor_nome, autor_cidade, tipo, item_id, nota, comentario, origem) VALUES (?,?,?,?,?,?,?,'utilizador')`, req.user.id, autorCurto(req.user.nome), str(b.cidade, 60) || null, tipo, id, nota, com || null);
+  return { criada: true };
+});
+api.delete('/api/avaliacoes/:id', async req => {
+  await auth(req);
+  const r = await run('DELETE FROM avaliacoes WHERE id = ? AND utilizador_id = ?', Number(req.params.id), req.user.id);
+  if (!r.changes) erro(404, 'Avaliação não encontrada.');
+  return { apagada: true };
 });
 
 // ---------- favoritos ----------
@@ -753,7 +778,7 @@ api.post('/api/admin/utilizadores/:id/ajuste', corpo, async req => {
   return { saldo };
 });
 
-api.get('/api/admin/avaliacoes', async req => { await admin(req); return all('SELECT * FROM avaliacoes ORDER BY criado_em DESC, id DESC LIMIT 500'); });
+api.get('/api/admin/avaliacoes', async req => { await admin(req); return all(`SELECT a.*, u.email AS autor_email FROM avaliacoes a LEFT JOIN utilizadores u ON u.id = a.utilizador_id ORDER BY (a.origem = 'exemplo'), a.criado_em DESC, a.id DESC LIMIT 1000`); });
 api.patch('/api/admin/avaliacoes/:id', corpo, async req => { await admin(req); await run('UPDATE avaliacoes SET aprovada = ? WHERE id = ?', req.dados.aprovada ? 1 : 0, Number(req.params.id)); });
 api.delete('/api/admin/avaliacoes/:id', async req => { await admin(req); await run('DELETE FROM avaliacoes WHERE id = ?', Number(req.params.id)); });
 
