@@ -23,4 +23,4 @@ jobs:
           git checkout -B loja-capturas
           git add -f capturas-loja/*.png
           git commit -m "Capturas para as lojas ($GITHUB_SHA)" || true
-          git push -f origin loja-capturas
+          for i in 1 2 3 4; do git push -f origin loja-capturas && break; sleep 15; done

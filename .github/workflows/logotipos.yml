@@ -19,4 +19,4 @@ jobs:
       - run: |
           git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
           git checkout -B logotipos && git add -f logotipos && git commit -m "Logótipos recolhidos ($GITHUB_SHA)" || true
-          git push -f origin logotipos
+          for i in 1 2 3 4; do git push -f origin logotipos && break; sleep 15; done

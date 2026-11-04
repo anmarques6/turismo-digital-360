@@ -48,7 +48,7 @@ jobs:
           git checkout -B ios-capturas
           git add -f capturas-ios/inicio.png
           git commit -m "Captura da app iOS ($GITHUB_SHA)" || true
-          git push -f origin ios-capturas
+          for i in 1 2 3 4; do git push -f origin ios-capturas && break; sleep 15; done
       - name: Assinar e enviar para o App Store Connect (TestFlight)
         if: env.APPLE_TEAM_ID != '' && env.ASC_KEY_ID != '' && env.ASC_ISSUER_ID != '' && env.ASC_KEY_P8 != ''
         run: |
