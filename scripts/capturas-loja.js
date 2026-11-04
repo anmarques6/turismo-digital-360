@@ -1,4 +1,4 @@
-// Capturas de ecrã para o Google Play e a App Store, tiradas do site real com a conta de demonstração.
+// Capturas de ecrã para o Google Play e a App Store, tiradas do site real com a conta de demonstração (actualizadas com os logótipos).
 // Uso: node scripts/capturas-loja.js <pasta>  (precisa do Playwright)
 const { chromium } = require('playwright');
 const path = require('node:path'), fs = require('node:fs');
