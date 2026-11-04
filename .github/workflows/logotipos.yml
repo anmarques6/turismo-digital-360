@@ -1,0 +1,22 @@
+# Recolhe os logótipos oficiais das transportadoras (para escolha manual) e guarda-os no ramo «logotipos»
+name: Logotipos das transportadoras
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/logotipos.js', '.github/workflows/logotipos.yml']
+permissions:
+  contents: write
+jobs:
+  recolher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node scripts/logotipos.js logotipos
+      - run: |
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git checkout -B logotipos && git add -f logotipos && git commit -m "Logótipos recolhidos ($GITHUB_SHA)" || true
+          git push -f origin logotipos
