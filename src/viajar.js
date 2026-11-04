@@ -179,7 +179,7 @@ function registar({ api, auth, admin, corpo, auditar, listarPublico, notificar }
   // ---------- administração: monitorização e confirmação de reservas ----------
   api.get('/api/admin/transportes', async req => {
     await admin(req);
-    const T = await all(`SELECT t.id, t.nome, t.categoria, t.conector, t.nivel_integracao, t.estado_integracao, t.ultima_verificacao, t.ultimo_estado, t.ultimo_tempo_ms, t.ultimo_erro, t.ativo,
+    const T = await all(`SELECT t.id, t.nome, t.logotipo, t.categoria, t.conector, t.nivel_integracao, t.estado_integracao, t.ultima_verificacao, t.ultimo_estado, t.ultimo_tempo_ms, t.ultimo_erro, t.ativo,
       (SELECT COUNT(*)::int FROM viagens v WHERE v.transportadora_id = t.id) AS viagens,
       (SELECT COUNT(*)::int FROM viagem_eventos e WHERE e.transportadora_id = t.id AND e.tipo = 'redireccionamento') AS redireccionamentos,
       (SELECT COUNT(*)::int FROM viagens v WHERE v.transportadora_id = t.id AND v.estado = 'reserva_pendente') AS reservas_pendentes,

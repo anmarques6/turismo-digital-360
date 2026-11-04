@@ -774,3 +774,6 @@ INSERT INTO transportadoras (nome, categoria, conector, site, telefone, whatsapp
  ('TAAG Angola Airlines', 'aereo', 'taag', 'https://digital.flytaag.com/booking?lang=pt-PT', NULL, NULL, '["Luanda","Icolo e Bengo","Bengo","Cabinda","Benguela","Bié","Lunda Norte","Huambo","Huíla","Moxico","Cubango","Namibe","Cunene","Lunda Sul","Zaire"]', 4, 'aguarda_parceria', NULL, 'Motor de reservas sem parâmetros públicos. Luanda–Cabinda: venda exclusiva da TAAG desde 15/09/2026. Voos domésticos de Luanda partem do Aeroporto Dr. António Agostinho Neto.', 60, '2026-11-03', 'Motor de reservas disponível'),
  ('Fly Angola', 'aereo', 'fly_angola', 'https://flyangola.co.ao/', NULL, NULL, '["Luanda","Icolo e Bengo","Bengo","Huíla","Cabinda","Benguela"]', 4, 'aguarda_parceria', NULL, 'Rotas Luanda–Lubango, Lubango–Cabinda e Lubango–Benguela anunciadas em Abril de 2025: confirmar a oferta actual no site.', 70, '2026-11-03', 'Ligação de reserva no site')
 ON CONFLICT (conector) DO NOTHING;
+
+-- v3.11 · Logótipos oficiais das transportadoras (obtidos nos sites oficiais a 4/11/2026; créditos em /creditos.html)
+UPDATE transportadoras SET logotipo = '/img/transportadoras/' || conector || '.png' WHERE logotipo IS NULL AND conector IN ('taag','macon','nawabus','huambo_expresso','real_express','cidralia','fly_angola');

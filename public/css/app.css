@@ -751,3 +751,6 @@ span.ilustr{pointer-events:none}
 .vj-nd{display:flex;gap:6px;align-items:center}
 .vj-nota{background:var(--green-bg);color:var(--fg);border-radius:10px;padding:10px 12px;font-size:14px}
 @media (max-width:640px){.vj-op-bt .btn-red{flex-basis:100%}.vj-links .btn{flex:1 1 100%;justify-content:center}}
+
+.vj-logo{width:96px;height:48px;border-radius:10px;object-fit:cover;border:1px solid var(--line)}
+.vj-ini{width:48px}

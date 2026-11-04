@@ -35,6 +35,7 @@ async function baixar(chave, f, tentativas = 4) {
 
   const esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const linhas = chaves.map(k => { const f = FONTES[k]; return `<li><img src="/img/${k}.jpg" alt="" loading="lazy"><div><b>${esc(f.titulo)}</b><span>${esc(f.autor || 'Autor desconhecido')} · ${f.licenca_url ? `<a href="${esc(f.licenca_url)}" rel="noopener" target="_blank">${esc(f.licenca)}</a>` : esc(f.licenca)} · <a href="${esc(f.pagina)}" rel="noopener" target="_blank">Wikimedia Commons</a></span></div></li>`; }).join('\n');
+  const LOGOS = [['TAAG Angola Airlines', 'taag.png', 'https://flytaag.com/'], ['MACON', 'macon.png', 'https://macontransp.com/'], ['NawaBus', 'nawabus.png', 'https://www.nawabus.ao/'], ['Huambo Expresso', 'huambo_expresso.png', 'https://huamboexpresso.ao/'], ['Real Express', 'real_express.png', 'https://realexpress-wl.praxioluna.com.br/'], ['Viação Cidrália', 'cidralia.png', 'https://cidralia.com/'], ['Fly Angola', 'fly_angola.png', 'https://flyangola.co.ao/']];
   fs.writeFileSync(path.join(__dirname, '..', 'public', 'creditos.html'), `<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Créditos das imagens · Angola 365º</title><link rel="icon" href="/img/sigaf.webp"><style>
 :root{--bg:#F5F5F7;--fg:#141726;--muted:#666B7D;--card:#fff;--line:#E4E5EA;--red:#C8102E}
 @media (prefers-color-scheme:dark){:root{--bg:#0D0F17;--fg:#EEF0F6;--muted:#9BA1B8;--card:#171A26;--line:#2A2F45}}
@@ -48,6 +49,11 @@ li b{font-size:14px;overflow-wrap:anywhere}li span{font-size:13px;color:var(--mu
 <p>As fotografias deste site vêm do Wikimedia Commons e são usadas ao abrigo das licenças indicadas (Creative Commons ou domínio público). Algumas fotografias de alojamentos, restaurantes e viaturas são ilustrativas e não mostram o estabelecimento ou o veículo exacto.</p>
 <ul>
 ${linhas}
+</ul>
+<h2>Logótipos das transportadoras</h2>
+<p>Os logótipos são marcas dos respectivos proprietários e servem só para identificar cada transportadora no COMO VIAJAR, com ligação para o seu site oficial. Foram obtidos nos sites oficiais a 4 de Novembro de 2026. O Angola 365º não é patrocinado pelas transportadoras. Se representa uma delas e quer outra versão do logótipo ou a sua remoção, escreva para projectos@sigafangola.ao.</p>
+<ul>
+${LOGOS.map(([n, img, fonte]) => `<li><img src="/img/transportadoras/${img}" alt="" style="object-fit:contain;width:120px;height:60px"><div><b>${n}</b><span><a href="${fonte}" rel="noopener">${fonte}</a></span></div></li>`).join('\n')}
 </ul></main></body></html>`);
   fs.writeFileSync(path.join(__dirname, '..', 'src', 'imagens.json'), JSON.stringify(chaves.map(k => `/img/${k}.jpg`).concat(fs.readdirSync(DEST).filter(f => f.endsWith('.svg')).map(f => '/img/' + f))));
   console.log('Página de créditos criada.');

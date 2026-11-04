@@ -505,3 +505,8 @@ test('L4 conta de demonstração de parceiro: aprovada, mas os produtos nunca s�
   const al = (await req('GET', '/api/alojamentos')).j.find(a => !a.negocio_id && a.parceiro === 0);
   assert.equal((await req('POST', '/api/parceiro/negocios', { negocio: { nome: 'x', telefone: '923 000 001', endereco: 'Rua', latitude: LUANDA.lat, longitude: LUANDA.lon }, produto: { preco_noite: 1 }, reclamar: { tabela: 'alojamentos', id: al.id } }, op)).status, 409, 'não reclama fichas reais');
 });
+
+test('M5 transportadoras com logótipo oficial', async () => {
+  const r = (await req('POST', '/api/viagens/pesquisar', { origem: { provincia: 'Luanda' }, destino: { provincia: 'Benguela' } }, cliente)).j;
+  for (const o of [...r.rodoviario, ...r.aereo]) assert.match(o.logotipo || '', /^\/img\/transportadoras\/[a-z_]+\.png$/, o.nome);
+});
